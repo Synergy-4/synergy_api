@@ -1,0 +1,2529 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Synergy — Full Technical Specification</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    :root {
+      --ink: #0d1117;
+      --ink-mid: #161b22;
+      --ink-light: #21262d;
+      --border: #30363d;
+      --border-lt: #3d4450;
+      --muted: #8b949e;
+      --body: #c9d1d9;
+      --white: #f0f6fc;
+      --green: #3fb950;
+      --green-dim: #1a3a24;
+      --blue: #58a6ff;
+      --blue-dim: #0d2a4a;
+      --amber: #e3b341;
+      --amber-dim: #3a2a0a;
+      --purple: #bc8cff;
+      --purple-dim: #2a1a4a;
+      --red: #f85149;
+      --red-dim: #3a0d0d;
+      --teal: #39d353;
+      --cyan: #79c0ff;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Sora', system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.7;
+      color: var(--body);
+      background: var(--ink);
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      width: 260px;
+      background: var(--ink-mid);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      z-index: 100;
+      padding: 28px 0 40px;
+    }
+
+    .sidebar-logo {
+      padding: 0 24px 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    .sidebar-logo-name {
+      font-family: 'Sora', sans-serif;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--white);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0.5
+      }
+    }
+
+    .sidebar-logo-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      font-weight: 400;
+    }
+
+    .nav-group {
+      margin-bottom: 4px;
+    }
+
+    .nav-group-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 8px 24px 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 24px;
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--muted);
+      text-decoration: none;
+      transition: all 0.15s;
+      border-left: 2px solid transparent;
+      cursor: pointer;
+    }
+
+    .nav-item:hover {
+      color: var(--white);
+      background: var(--ink-light);
+    }
+
+    .nav-item.active {
+      color: var(--blue);
+      border-left-color: var(--blue);
+      background: var(--blue-dim);
+    }
+
+    .nav-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--border-lt);
+      min-width: 18px;
+    }
+
+    /* ── MAIN ── */
+    .main {
+      margin-left: 260px;
+      padding: 60px 72px;
+      max-width: calc(260px + 960px);
+    }
+
+    /* ── HERO HEADER ── */
+    .doc-header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 48px;
+      margin-bottom: 64px;
+    }
+
+    .doc-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--green-dim);
+      border: 1px solid rgba(63, 185, 80, 0.3);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--green);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    .doc-title {
+      font-family: 'Sora', sans-serif;
+      font-size: clamp(32px, 4vw, 52px);
+      font-weight: 700;
+      color: var(--white);
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+
+    .doc-title span {
+      color: var(--blue);
+    }
+
+    .doc-subtitle {
+      font-size: 16px;
+      font-weight: 300;
+      color: var(--muted);
+      max-width: 580px;
+      line-height: 1.7;
+    }
+
+    .doc-meta {
+      display: flex;
+      gap: 32px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+
+    .meta-item {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .meta-item strong {
+      color: var(--body);
+      font-weight: 500;
+    }
+
+    /* ── SECTIONS ── */
+    .section {
+      margin-bottom: 80px;
+      scroll-margin-top: 40px;
+    }
+
+    .section-header {
+      margin-bottom: 32px;
+    }
+
+    .section-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      letter-spacing: 0.08em;
+    }
+
+    .section-title {
+      font-family: 'Sora', sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: -0.01em;
+      margin-bottom: 8px;
+    }
+
+    .section-desc {
+      font-size: 14px;
+      color: var(--muted);
+      max-width: 600px;
+      line-height: 1.7;
+    }
+
+    .subsection {
+      margin-bottom: 40px;
+    }
+
+    .subsection-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--white);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .subsection-title::before {
+      content: '';
+      width: 3px;
+      height: 16px;
+      border-radius: 2px;
+      background: var(--blue);
+      flex-shrink: 0;
+    }
+
+    /* ── CODE BLOCKS ── */
+    .code-block {
+      background: var(--ink-light);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 16px 0;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      background: var(--ink-mid);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .code-lang {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .code-file {
+      font-size: 11px;
+      color: var(--blue);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .code-body {
+      padding: 20px 24px;
+      font-size: 12.5px;
+      line-height: 1.8;
+      color: var(--body);
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    /* Syntax highlighting */
+    .k {
+      color: #ff7b72;
+    }
+
+    /* keyword */
+    .s {
+      color: #a5d6ff;
+    }
+
+    /* string */
+    .c {
+      color: #8b949e;
+      font-style: italic;
+    }
+
+    /* comment */
+    .f {
+      color: #d2a8ff;
+    }
+
+    /* function */
+    .n {
+      color: #79c0ff;
+    }
+
+    /* class/type */
+    .v {
+      color: #ffa657;
+    }
+
+    /* variable */
+    .p {
+      color: var(--body);
+    }
+
+    /* punctuation */
+    .num {
+      color: #79c0ff;
+    }
+
+    /* number */
+    .dec {
+      color: #ff7b72;
+    }
+
+    /* decorator */
+
+    /* ── TABLES ── */
+    .spec-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin: 16px 0;
+    }
+
+    .spec-table th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 10px 16px;
+      border-bottom: 2px solid var(--border);
+      background: var(--ink-mid);
+    }
+
+    .spec-table td {
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--body);
+      vertical-align: top;
+    }
+
+    .spec-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .spec-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .spec-table code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      color: var(--cyan);
+      background: var(--ink-light);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    /* ── CALLOUT BOXES ── */
+    .callout {
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin: 16px 0;
+      display: flex;
+      gap: 14px;
+    }
+
+    .callout-info {
+      background: var(--blue-dim);
+      border: 1px solid rgba(88, 166, 255, 0.2);
+    }
+
+    .callout-warn {
+      background: var(--amber-dim);
+      border: 1px solid rgba(227, 179, 65, 0.2);
+    }
+
+    .callout-tip {
+      background: var(--green-dim);
+      border: 1px solid rgba(63, 185, 80, 0.2);
+    }
+
+    .callout-icon {
+      font-size: 16px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .callout-body {
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--body);
+    }
+
+    .callout-body strong {
+      font-weight: 600;
+      color: var(--white);
+    }
+
+    /* ── PHASE CARDS ── */
+    .phases {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .phase-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .phase-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 20px;
+      background: var(--ink-mid);
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+    .phase-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .ph1 {
+      background: rgba(88, 166, 255, 0.15);
+      color: var(--blue);
+      border: 1px solid rgba(88, 166, 255, 0.3);
+    }
+
+    .ph2 {
+      background: rgba(63, 185, 80, 0.15);
+      color: var(--green);
+      border: 1px solid rgba(63, 185, 80, 0.3);
+    }
+
+    .ph3 {
+      background: rgba(227, 179, 65, 0.15);
+      color: var(--amber);
+      border: 1px solid rgba(227, 179, 65, 0.3);
+    }
+
+    .ph4 {
+      background: rgba(188, 140, 255, 0.15);
+      color: var(--purple);
+      border: 1px solid rgba(188, 140, 255, 0.3);
+    }
+
+    .ph5 {
+      background: rgba(248, 81, 73, 0.15);
+      color: var(--red);
+      border: 1px solid rgba(248, 81, 73, 0.3);
+    }
+
+    .phase-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--white);
+      flex: 1;
+    }
+
+    .phase-meta {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .phase-body {
+      padding: 20px 24px;
+    }
+
+    .task-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .task-item {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .task-check {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 1.5px solid var(--border-lt);
+      flex-shrink: 0;
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .task-content {
+      flex: 1;
+    }
+
+    .task-title {
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--white);
+      margin-bottom: 3px;
+    }
+
+    .task-desc {
+      font-size: 12.5px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .task-tags {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    .task-tag {
+      font-size: 10.5px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 3px;
+      letter-spacing: 0.04em;
+    }
+
+    .tag-api {
+      background: rgba(88, 166, 255, 0.12);
+      color: var(--blue);
+    }
+
+    .tag-flutter {
+      background: rgba(63, 185, 80, 0.12);
+      color: var(--green);
+    }
+
+    .tag-db {
+      background: rgba(227, 179, 65, 0.12);
+      color: var(--amber);
+    }
+
+    .tag-ai {
+      background: rgba(188, 140, 255, 0.12);
+      color: var(--purple);
+    }
+
+    .tag-infra {
+      background: rgba(248, 81, 73, 0.12);
+      color: var(--red);
+    }
+
+    /* ── ENDPOINT CARDS ── */
+    .endpoint-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    .endpoint-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--ink-mid);
+    }
+
+    .method-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 4px;
+      min-width: 52px;
+      text-align: center;
+    }
+
+    .GET {
+      background: rgba(63, 185, 80, 0.2);
+      color: var(--green);
+    }
+
+    .POST {
+      background: rgba(88, 166, 255, 0.2);
+      color: var(--blue);
+    }
+
+    .PUT {
+      background: rgba(227, 179, 65, 0.2);
+      color: var(--amber);
+    }
+
+    .DELETE {
+      background: rgba(248, 81, 73, 0.2);
+      color: var(--red);
+    }
+
+    .PATCH {
+      background: rgba(188, 140, 255, 0.2);
+      color: var(--purple);
+    }
+
+    .endpoint-path {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--white);
+      font-weight: 500;
+      flex: 1;
+    }
+
+    .endpoint-desc {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .endpoint-body {
+      padding: 14px 16px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .auth-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 3px;
+      letter-spacing: 0.06em;
+      background: rgba(188, 140, 255, 0.12);
+      color: var(--purple);
+    }
+
+    /* ── DB SCHEMA ── */
+    .schema-table {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .schema-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      background: var(--ink-mid);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .table-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--amber);
+    }
+
+    .table-desc {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .schema-fields {
+      padding: 0;
+    }
+
+    .field-row {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      padding: 9px 16px;
+      border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+    }
+
+    .field-row:last-child {
+      border-bottom: none;
+    }
+
+    .field-name {
+      color: var(--cyan);
+      min-width: 160px;
+      font-weight: 500;
+    }
+
+    .field-type {
+      color: var(--purple);
+      min-width: 120px;
+    }
+
+    .field-notes {
+      color: var(--muted);
+      font-size: 11px;
+      font-family: 'Sora', sans-serif;
+    }
+
+    .pk {
+      color: var(--amber);
+    }
+
+    .fk {
+      color: #79c0ff;
+    }
+
+    /* ── ARCH DIAGRAM ── */
+    .arch-box {
+      background: var(--ink-light);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 28px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      line-height: 1.9;
+      color: var(--body);
+      white-space: pre;
+      overflow-x: auto;
+      margin: 16px 0;
+    }
+
+    /* ── FOLDER TREE ── */
+    .folder-tree {
+      background: var(--ink-light);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px 24px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      line-height: 1.85;
+      color: var(--body);
+      white-space: pre;
+    }
+
+    .dir {
+      color: var(--blue);
+    }
+
+    .file {
+      color: var(--body);
+    }
+
+    .cmt {
+      color: var(--muted);
+    }
+
+    /* ── DECISION TABLE ── */
+    .decision-row {
+      display: grid;
+      grid-template-columns: 180px 1fr 1fr;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .decision-row:last-child {
+      border-bottom: none;
+    }
+
+    .decision-cell {
+      padding: 12px 16px;
+      font-size: 13px;
+    }
+
+    .decision-label {
+      font-weight: 600;
+      color: var(--white);
+    }
+
+    .decision-choice {
+      color: var(--green);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+    }
+
+    .decision-why {
+      color: var(--muted);
+      font-size: 12.5px;
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--ink);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-lt);
+      border-radius: 3px;
+    }
+
+    /* ── INLINE CODE ── */
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--cyan);
+      background: var(--ink-light);
+      padding: 2px 6px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 48px 0;
+    }
+
+    @media (max-width: 900px) {
+      .sidebar {
+        display: none;
+      }
+
+      .main {
+        margin-left: 0;
+        padding: 40px 24px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-name">
+        <div class="logo-dot"></div>
+        Synergy
+      </div>
+      <div class="sidebar-logo-sub">Technical Specification v1.0</div>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Overview</div>
+      <a href="#overview" class="nav-item active"><span class="nav-num">00</span> System Overview</a>
+      <a href="#stack" class="nav-item"><span class="nav-num">01</span> Tech Stack Decisions</a>
+      <a href="#architecture" class="nav-item"><span class="nav-num">02</span> Architecture Diagram</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Backend</div>
+      <a href="#project-structure" class="nav-item"><span class="nav-num">03</span> Project Structure</a>
+      <a href="#database" class="nav-item"><span class="nav-num">04</span> Database Schema</a>
+      <a href="#endpoints" class="nav-item"><span class="nav-num">05</span> API Endpoints</a>
+      <a href="#sdui-schema" class="nav-item"><span class="nav-num">06</span> SDUI JSON Schema</a>
+      <a href="#ai-engine" class="nav-item"><span class="nav-num">07</span> AI Activity Engine</a>
+      <a href="#auth" class="nav-item"><span class="nav-num">08</span> Auth & Security</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Flutter</div>
+      <a href="#flutter-structure" class="nav-item"><span class="nav-num">09</span> Flutter Structure</a>
+      <a href="#sdui-engine" class="nav-item"><span class="nav-num">10</span> SDUI Engine Design</a>
+      <a href="#game-widgets" class="nav-item"><span class="nav-num">11</span> Game Widget Registry</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Implementation</div>
+      <a href="#phase1" class="nav-item"><span class="nav-num">12</span> Phase 1 — Foundation</a>
+      <a href="#phase2" class="nav-item"><span class="nav-num">13</span> Phase 2 — Core API</a>
+      <a href="#phase3" class="nav-item"><span class="nav-num">14</span> Phase 3 — Flutter SDUI</a>
+      <a href="#phase4" class="nav-item"><span class="nav-num">15</span> Phase 4 — AI Engine</a>
+      <a href="#phase5" class="nav-item"><span class="nav-num">16</span> Phase 5 — Deploy</a>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- DOC HEADER -->
+    <div class="doc-header" id="overview">
+      <div class="doc-tag"><span class="logo-dot" style="width:6px;height:6px;box-shadow:none;"></span> Live Document
+      </div>
+      <h1 class="doc-title">Synergy <span>Full Stack</span><br>Technical Specification</h1>
+      <p class="doc-subtitle">FastAPI backend with Server-Driven UI, Flutter mobile client, Supabase data layer, and
+        Claude-powered activity generation engine.</p>
+      <div class="doc-meta">
+        <div class="meta-item"><strong>Backend:</strong> FastAPI + Python 3.13</div>
+        <div class="meta-item"><strong>Mobile:</strong> Flutter 3.x (Dart)</div>
+        <div class="meta-item"><strong>Database:</strong> Supabase + Redis</div>
+        <div class="meta-item"><strong>AI:</strong> Google Genai API</div>
+        <div class="meta-item"><strong>Pattern:</strong> Server-Driven UI (SDUI)</div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 01: TECH STACK -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section class="section" id="stack">
+      <div class="section-header">
+        <div class="section-num">// 01</div>
+        <h2 class="section-title">Tech Stack Decisions</h2>
+        <p class="section-desc">Every technology choice is deliberate. Here's what we're using and why.</p>
+      </div>
+
+      <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:24px;">
+        <div
+          style="display:grid;grid-template-columns:180px 1fr 1fr;background:var(--ink-mid);border-bottom:1px solid var(--border);">
+          <div
+            style="padding:10px 16px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);">
+            Layer</div>
+          <div
+            style="padding:10px 16px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);">
+            Choice</div>
+          <div
+            style="padding:10px 16px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);">
+            Rationale</div>
+        </div>
+        <div class="decision-row">
+          <div class="decision-cell decision-label">API Framework</div>
+          <div class="decision-cell decision-choice">FastAPI</div>
+          <div class="decision-cell decision-why">Async-native, auto OpenAPI docs, Pydantic validation, faster than
+            Flask for AI calls</div>
+        </div>
+        <div class="decision-row">
+          <div class="decision-cell decision-label">Mobile</div>
+          <div class="decision-cell decision-choice">Flutter 3.x</div>
+          <div class="decision-cell decision-why">Single codebase for iOS + Android, excellent animation support for
+            game widgets</div>
+        </div>
+        <div class="decision-row">
+          <div class="decision-cell decision-label">Primary DB</div>
+          <div class="decision-cell decision-choice">Supabase</div>
+          <div class="decision-cell decision-why">JSONB columns for flexible activity configs, relational integrity for
+            child/goal data</div>
+        </div>
+        <div class="decision-row">
+          <div class="decision-cell decision-label">Cache / Queue</div>
+          <div class="decision-cell decision-choice">Redis</div>
+          <div class="decision-cell decision-why">Cache generated activities per child, rate-limit AI calls, session
+            state</div>
+        </div>
+        <div class="decision-row">
+          <div class="decision-cell decision-label">ORM</div>
+          <div class="decision-cell decision-choice">SQLAlchemy 2.0 async</div>
+          <div class="decision-cell decision-why">Async-compatible, mature, plays well with FastAPI dependency injection
+          </div>
+        </div>
+        <div class="decision-row">
+          <div class="decision-cell decision-label">Auth</div>
+          <div class="decision-cell decision-choice">JWT + OAuth2</div>
+          <div class="decision-cell decision-why">Stateless, standard, Pydantic models validate token payloads
+            automatically</div>
+        </div>
+        <div class="decision-row">
+          <div class="decision-cell decision-label">AI Layer</div>
+          <div class="decision-cell decision-choice">Google Genai API</div>
+          <div class="decision-cell decision-why">Structured JSON output via tool_use, strong instruction following for
+            activity gen</div>
+        </div>
+        <div class="decision-row">
+          <div class="decision-cell decision-label">File Storage</div>
+          <div class="decision-cell decision-choice">AWS S3 / Cloudflare R2</div>
+          <div class="decision-cell decision-why">Activity images, audio prompts — R2 is zero-egress cost</div>
+        </div>
+        <div class="decision-row">
+          <div class="decision-cell decision-label">Deployment</div>
+          <div class="decision-cell decision-choice">Railway / Render</div>
+          <div class="decision-cell decision-why">One-command deploys, managed Supabase + Redis, free tier for MVP</div>
+        </div>
+        <div class="decision-row">
+          <div class="decision-cell decision-label">State Mgmt (Flutter)</div>
+          <div class="decision-cell decision-choice">Riverpod</div>
+          <div class="decision-cell decision-why">Compile-safe, great async/network state handling, testable</div>
+        </div>
+      </div>
+
+      <div class="callout callout-tip">
+        <div class="callout-icon">💡</div>
+        <div class="callout-body"><strong>Key SDUI insight:</strong> Supabase's <code>JSONB</code> column type is
+          central to this architecture. Activity configs, UI component trees, and theme tokens are all stored as JSONB —
+          giving you schema flexibility without sacrificing query performance. You can index into JSONB fields and query
+          them efficiently.</div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 02: ARCHITECTURE DIAGRAM -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section class="section" id="architecture">
+      <div class="section-header">
+        <div class="section-num">// 02</div>
+        <h2 class="section-title">Architecture Diagram</h2>
+      </div>
+
+      <div class="arch-box"><span
+          style="color:var(--muted)">┌─────────────────────────────────────────────────────────────────────┐</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--amber)">FLUTTER CLIENT</span> <span
+          style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--blue)">┌───────────────┐</span> <span
+          style="color:var(--blue)">┌────────────────┐</span> <span
+          style="color:var(--blue)">┌──────────────────┐</span> <span style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--blue)">│ SDUI Engine │</span> <span
+          style="color:var(--blue)">│ Game Registry │</span> <span style="color:var(--blue)">│ Session Tracker │</span>
+        <span style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--blue)">│ (renderer) │</span> <span
+          style="color:var(--blue)">│ matching │</span> <span style="color:var(--blue)">│ records results │</span> <span
+          style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--blue)">│ parses JSON │</span> <span
+          style="color:var(--blue)">│ sequencing │</span> <span style="color:var(--blue)">│ posts to API │</span> <span
+          style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--blue)">│ builds tree │</span> <span
+          style="color:var(--blue)">│ naming │</span> <span style="color:var(--blue)">│ │</span> <span
+          style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--blue)">└───────┬───────┘</span> <span
+          style="color:var(--blue)">│ imitation │</span> <span style="color:var(--blue)">└──────────────────┘</span>
+        <span style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--blue)">│</span> <span
+          style="color:var(--blue)">└────────────────┘</span> <span style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--blue)">│ Riverpod state providers + API
+          service layer</span> <span style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">└──────────┼──────────────────────────────────────────────────────────┘</span>
+        <span style="color:var(--muted)">│ HTTPS / JWT</span>
+        <span style="color:var(--muted)">▼</span>
+        <span style="color:var(--muted)">┌─────────────────────────────────────────────────────────────────────┐</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--green)">FASTAPI SERVER</span> <span
+          style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--green)">┌──────────────┐ ┌──────────────┐
+          ┌──────────┐ ┌──────────┐</span> <span style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--green)">│ /auth router │ │/child router │
+          │/activity │ │/session │</span> <span style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--green)">│ register │ │ profile │ │ /next │ │
+          /save │</span> <span style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--green)">│ login │ │ goals │ │ /config │ │
+          /history│</span> <span style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--green)">│ refresh │ │ interests │ │ │ │
+          │</span> <span style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--green)">└──────────────┘ └──────────────┘
+          └────┬─────┘ └──────────┘</span> <span style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--green)">│</span> <span
+          style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--green)">┌─────────────────────────┐</span>
+        <span style="color:var(--green)">┌────┴──────────────────┐</span> <span style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--green)">│ Pydantic Models │</span> <span
+          style="color:var(--green)">│ Activity Generator │</span> <span style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--green)">│ request validation │</span> <span
+          style="color:var(--green)">│ builds prompt from │</span> <span style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--green)">│ response serialization │</span>
+        <span style="color:var(--green)">│ child profile + AI │</span> <span style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">│</span> <span style="color:var(--green)">└─────────────────────────┘</span>
+        <span style="color:var(--green)">└───────────────────────┘</span> <span style="color:var(--muted)">│</span>
+        <span style="color:var(--muted)">└─────────────────────────────────────────────────────────────────────┘</span>
+        <span style="color:var(--muted)">│ │ │</span>
+        <span style="color:var(--muted)">┌──────┴──────┐ ┌────┴──────┐ ┌────┴──────────┐</span>
+        <span style="color:var(--amber)">│ Supabase │</span> <span style="color:var(--red)">│ Redis │</span> <span
+          style="color:var(--purple)">│ Claude API │</span>
+        <span style="color:var(--amber)">│ profiles │</span> <span style="color:var(--red)">│ activity │</span> <span
+          style="color:var(--purple)">│ generates │</span>
+        <span style="color:var(--amber)">│ goals │</span> <span style="color:var(--red)">│ cache │</span> <span
+          style="color:var(--purple)">│ structured │</span>
+        <span style="color:var(--amber)">│ sessions │</span> <span style="color:var(--red)">│ rate lim │</span> <span
+          style="color:var(--purple)">│ JSON configs │</span>
+        <span style="color:var(--amber)">└─────────────┘</span> <span style="color:var(--red)">└───────────┘</span>
+        <span style="color:var(--purple)">└───────────────┘</span>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 03: PROJECT STRUCTURE -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section class="section" id="project-structure">
+      <div class="section-header">
+        <div class="section-num">// 03</div>
+        <h2 class="section-title">Project Structure</h2>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">FastAPI Backend</div>
+        <div class="folder-tree"><span class="dir">synergy-api/</span>
+          <span class="cmt">├── app/</span>
+          <span class="cmt">│ ├── </span><span class="dir">routers/</span> <span class="cmt"># One file per
+            domain</span>
+          <span class="cmt">│ │ ├── </span><span class="file">auth.py</span> <span class="cmt"># register, login,
+            refresh token</span>
+          <span class="cmt">│ │ ├── </span><span class="file">children.py</span> <span class="cmt"># child profiles,
+            goals, interests</span>
+          <span class="cmt">│ │ ├── </span><span class="file">activities.py</span> <span class="cmt"># fetch next
+            activity, UI config</span>
+          <span class="cmt">│ │ ├── </span><span class="file">sessions.py</span> <span class="cmt"># save results,
+            session history</span>
+          <span class="cmt">│ │ └── </span><span class="file">progress.py</span> <span class="cmt"># developmental
+            progress analytics</span>
+          <span class="cmt">│ │</span>
+          <span class="cmt">│ ├── </span><span class="dir">models/</span> <span class="cmt"># SQLAlchemy ORM
+            models</span>
+          <span class="cmt">│ │ ├── </span><span class="file">user.py</span>
+          <span class="cmt">│ │ ├── </span><span class="file">child.py</span>
+          <span class="cmt">│ │ ├── </span><span class="file">goal.py</span>
+          <span class="cmt">│ │ ├── </span><span class="file">activity.py</span> <span class="cmt"># stores SDUI config
+            as JSONB</span>
+          <span class="cmt">│ │ └── </span><span class="file">session.py</span>
+          <span class="cmt">│ │</span>
+          <span class="cmt">│ ├── </span><span class="dir">schemas/</span> <span class="cmt"># Pydantic request/response
+            schemas</span>
+          <span class="cmt">│ │ ├── </span><span class="file">auth.py</span>
+          <span class="cmt">│ │ ├── </span><span class="file">child.py</span>
+          <span class="cmt">│ │ ├── </span><span class="file">activity.py</span> <span class="cmt"># SDUI payload schema
+            (source of truth)</span>
+          <span class="cmt">│ │ └── </span><span class="file">session.py</span>
+          <span class="cmt">│ │</span>
+          <span class="cmt">│ ├── </span><span class="dir">services/</span> <span class="cmt"># Business logic, no HTTP
+            concerns</span>
+          <span class="cmt">│ │ ├── </span><span class="file">activity_generator.py</span> <span class="cmt"># Claude
+            prompt + response parsing</span>
+          <span class="cmt">│ │ ├── </span><span class="file">activity_validator.py</span> <span class="cmt"># Validates
+            AI output before sending</span>
+          <span class="cmt">│ │ ├── </span><span class="file">child_service.py</span>
+          span class="cmt">│ │ └── </span><span class="file">progress_service.py</span>
+          <span class="cmt">│ │</span>
+          <span class="cmt">│ ├── </span><span class="dir">core/</span>
+          <span class="cmt">│ │ ├── </span><span class="file">config.py</span> <span class="cmt"># pydantic-settings env
+            config</span>
+          <span class="cmt">│ │ ├── </span><span class="file">database.py</span> <span class="cmt"># async SQLAlchemy
+            engine + session</span>
+          <span class="cmt">│ │ ├── </span><span class="file">redis.py</span> <span class="cmt"># Redis connection
+            pool</span>
+          <span class="cmt">│ │ ├── </span><span class="file">security.py</span> <span class="cmt"># JWT encode/decode,
+            password hashing</span>
+          <span class="cmt">│ │ └── </span><span class="file">dependencies.py</span> <span class="cmt"># FastAPI
+            Depends() functions</span>
+          <span class="cmt">│ │</span>
+          <span class="cmt">│ └── </span><span class="file">main.py</span> <span class="cmt"># App factory, router
+            registration</span>
+          <span class="cmt">│</span>
+          <span class="cmt">├── </span><span class="dir">alembic/</span> <span class="cmt"># DB migrations</span>
+          <span class="cmt">├── </span><span class="dir">tests/</span>
+          <span class="cmt">├── </span><span class="file">.env.example</span>
+          <span class="cmt">├── </span><span class="file">requirements.txt</span>
+          <span class="cmt">└── </span><span class="file">Dockerfile</span>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Flutter Client</div>
+        <div class="folder-tree"><span class="dir">synergy-app/</span>
+          <span class="cmt">└── lib/</span>
+          <span class="cmt"> ├── </span><span class="dir">core/</span>
+          <span class="cmt"> │ ├── </span><span class="file">api_client.dart</span> <span class="cmt"># Dio HTTP client,
+            auth interceptor</span>
+          <span class="cmt"> │ ├── </span><span class="file">theme.dart</span> <span class="cmt"># dynamic theme from
+            server tokens</span>
+          <span class="cmt"> │ └── </span><span class="file">router.dart</span> <span class="cmt"># go_router, guarded
+            routes</span>
+          <span class="cmt"> │</span>
+          <span class="cmt"> ├── </span><span class="dir">sdui/</span> <span class="cmt"># The SDUI engine — core of the
+            app</span>
+          <span class="cmt"> │ ├── </span><span class="file">screen_builder.dart</span> <span class="cmt"># Entry point:
+            JSON → Widget tree</span>
+          <span class="cmt"> │ ├── </span><span class="file">component_registry.dart</span><span class="cmt"># Maps
+            component_type → builder fn</span>
+          <span class="cmt"> │ ├── </span><span class="file">action_handler.dart</span> <span class="cmt"># Handles
+            on_complete actions</span>
+          <span class="cmt"> │ └── </span><span class="dir">components/</span> <span class="cmt"># SDUI-renderable UI
+            components</span>
+          <span class="cmt"> │ ├── </span><span class="file">sdui_header.dart</span>
+          <span class="cmt"> │ ├── </span><span class="file">sdui_progress_bar.dart</span>
+          <span class="cmt"> │ ├── </span><span class="file">sdui_parent_prompt.dart</span>
+          <span class="cmt"> │ └── </span><span class="file">sdui_celebration.dart</span>
+          <span class="cmt"> │</span>
+          <span class="cmt"> ├── </span><span class="dir">games/</span> <span class="cmt"># Pre-built game
+            widgets</span>
+          <span class="cmt"> │ ├── </span><span class="file">matching_game.dart</span> <span class="cmt"># Drag-and-drop
+            matching</span>
+          <span class="cmt"> │ ├── </span><span class="file">sequencing_game.dart</span> <span class="cmt"># Order steps
+            in sequence</span>
+          <span class="cmt"> │ ├── </span><span class="file">naming_game.dart</span> <span class="cmt"># Tap to name
+            objects</span>
+          <span class="cmt"> │ ├── </span><span class="file">imitation_game.dart</span> <span class="cmt"># Mirror
+            parent actions</span>
+          <span class="cmt"> │ └── </span><span class="file">base_game.dart</span> <span class="cmt"># Abstract class
+            all games extend</span>
+          <span class="cmt"> │</span>
+          <span class="cmt"> ├── </span><span class="dir">features/</span>
+          <span class="cmt"> │ ├── </span><span class="dir">auth/</span> <span class="cmt"># login, register
+            screens</span>
+          <span class="cmt"> │ ├── </span><span class="dir">home/</span> <span class="cmt"># dashboard, child
+            selection</span>
+          <span class="cmt"> │ ├── </span><span class="dir">activity/</span> <span class="cmt"># activity screen (uses
+            SDUI engine)</span>
+          <span class="cmt"> │ └── </span><span class="dir">progress/</span> <span class="cmt"># progress charts</span>
+          <span class="cmt"> │</span>
+          <span class="cmt"> ├── </span><span class="dir">providers/</span> <span class="cmt"># Riverpod state
+            providers</span>
+          <span class="cmt"> │ ├── </span><span class="file">auth_provider.dart</span>
+          <span class="cmt"> │ ├── </span><span class="file">activity_provider.dart</span>
+          <span class="cmt"> │ └── </span><span class="file">session_provider.dart</span>
+          <span class="cmt"> │</span>
+          <span class="cmt"> └── </span><span class="file">main.dart</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 04: DATABASE SCHEMA -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section class="section" id="database">
+      <div class="section-header">
+        <div class="section-num">// 04</div>
+        <h2 class="section-title">Database Schema</h2>
+        <p class="section-desc">Supabase with JSONB columns for flexible activity and UI configuration storage.</p>
+      </div>
+
+      <div class="schema-table">
+        <div class="schema-header"><span class="table-name">users</span><span class="table-desc">Parent / caregiver
+            accounts</span></div>
+        <div class="schema-fields">
+          <div class="field-row"><span class="field-name pk">id</span><span class="field-type">UUID PK</span><span
+              class="field-notes">Primary key, auto-generated</span></div>
+          <div class="field-row"><span class="field-name">email</span><span class="field-type">VARCHAR(255)</span><span
+              class="field-notes">UNIQUE NOT NULL, login identifier</span></div>
+          <div class="field-row"><span class="field-name">hashed_password</span><span
+              class="field-type">TEXT</span><span class="field-notes">bcrypt hash, never store plaintext</span></div>
+          <div class="field-row"><span class="field-name">full_name</span><span
+              class="field-type">VARCHAR(255)</span><span class="field-notes">Display name</span></div>
+          <div class="field-row"><span class="field-name">role</span><span class="field-type">ENUM</span><span
+              class="field-notes">'parent' | 'clinician' | 'admin'</span></div>
+          <div class="field-row"><span class="field-name">is_active</span><span class="field-type">BOOLEAN</span><span
+              class="field-notes">Soft disable accounts without delete</span></div>
+          <div class="field-row"><span class="field-name">created_at</span><span
+              class="field-type">TIMESTAMPTZ</span><span class="field-notes">DEFAULT now()</span></div>
+        </div>
+      </div>
+
+      <div class="schema-table">
+        <div class="schema-header"><span class="table-name">children</span><span class="table-desc">Child profiles
+            linked to a parent user</span></div>
+        <div class="schema-fields">
+          <div class="field-row"><span class="field-name pk">id</span><span class="field-type">UUID PK</span><span
+              class="field-notes"></span></div>
+          <div class="field-row"><span class="field-name fk">parent_id</span><span class="field-type">UUID
+              FK</span><span class="field-notes">→ users.id, CASCADE DELETE</span></div>
+          <div class="field-row"><span class="field-name">name</span><span class="field-type">VARCHAR(100)</span><span
+              class="field-notes">First name or nickname</span></div>
+          <div class="field-row"><span class="field-name">date_of_birth</span><span class="field-type">DATE</span><span
+              class="field-notes">Used to derive developmental age context</span></div>
+          <div class="field-row"><span class="field-name">diagnosis_notes</span><span
+              class="field-type">TEXT</span><span class="field-notes">Optional clinician notes, encrypted at rest</span>
+          </div>
+          <div class="field-row"><span class="field-name">interests</span><span class="field-type">JSONB</span><span
+              class="field-notes">["dinosaurs", "trains", "drawing"] — fed to AI prompts</span></div>
+          <div class="field-row"><span class="field-name">avatar_url</span><span class="field-type">TEXT</span><span
+              class="field-notes">S3 / R2 URL</span></div>
+          <div class="field-row"><span class="field-name">created_at</span><span
+              class="field-type">TIMESTAMPTZ</span><span class="field-notes"></span></div>
+        </div>
+      </div>
+
+      <div class="schema-table">
+        <div class="schema-header"><span class="table-name">goals</span><span class="table-desc">Developmental learning
+            goals per child</span></div>
+        <div class="schema-fields">
+          <div class="field-row"><span class="field-name pk">id</span><span class="field-type">UUID PK</span><span
+              class="field-notes"></span></div>
+          <div class="field-row"><span class="field-name fk">child_id</span><span class="field-type">UUID FK</span><span
+              class="field-notes">→ children.id</span></div>
+          <div class="field-row"><span class="field-name">domain</span><span class="field-type">ENUM</span><span
+              class="field-notes">'communication' | 'social' | 'cognitive' | 'motor' | 'self_care'</span></div>
+          <div class="field-row"><span class="field-name">description</span><span class="field-type">TEXT</span><span
+              class="field-notes">e.g. "Make eye contact during conversation for 3 seconds"</span></div>
+          <div class="field-row"><span class="field-name">status</span><span class="field-type">ENUM</span><span
+              class="field-notes">'active' | 'mastered' | 'paused'</span></div>
+          <div class="field-row"><span class="field-name">priority</span><span class="field-type">INTEGER</span><span
+              class="field-notes">1 = highest priority for activity generation</span></div>
+          <div class="field-row"><span class="field-name">set_by</span><span class="field-type">ENUM</span><span
+              class="field-notes">'clinician' | 'parent' — affects AI weighting</span></div>
+          <div class="field-row"><span class="field-name">created_at</span><span
+              class="field-type">TIMESTAMPTZ</span><span class="field-notes"></span></div>
+        </div>
+      </div>
+
+      <div class="schema-table">
+        <div class="schema-header"><span class="table-name">activities</span><span class="table-desc">Generated activity
+            configs — the heart of SDUI</span></div>
+        <div class="schema-fields">
+          <div class="field-row"><span class="field-name pk">id</span><span class="field-type">UUID PK</span><span
+              class="field-notes"></span></div>
+          <div class="field-row"><span class="field-name fk">child_id</span><span class="field-type">UUID FK</span><span
+              class="field-notes">→ children.id, nullable for template activities</span></div>
+          <div class="field-row"><span class="field-name fk">goal_id</span><span class="field-type">UUID FK</span><span
+              class="field-notes">→ goals.id — which goal this targets</span></div>
+          <div class="field-row"><span class="field-name">game_type</span><span
+              class="field-type">VARCHAR(50)</span><span class="field-notes">'matching_game' | 'sequencing_game' |
+              'naming_game' | 'imitation_game'</span></div>
+          <div class="field-row"><span class="field-name">ui_config</span><span class="field-type">JSONB</span><span
+              class="field-notes">Full SDUI payload (screen, theme, components, on_complete)</span></div>
+          <div class="field-row"><span class="field-name">duration_minutes</span><span
+              class="field-type">INTEGER</span><span class="field-notes">Target activity duration (5–10)</span></div>
+          <div class="field-row"><span class="field-name">ai_generated</span><span
+              class="field-type">BOOLEAN</span><span class="field-notes">True if created by Claude, false if
+              handcrafted</span></div>
+          <div class="field-row"><span class="field-name">generation_prompt</span><span
+              class="field-type">TEXT</span><span class="field-notes">Stored for debugging / audit trail</span></div>
+          <div class="field-row"><span class="field-name">is_validated</span><span
+              class="field-type">BOOLEAN</span><span class="field-notes">Passes schema validation check before
+              serving</span></div>
+          <div class="field-row"><span class="field-name">created_at</span><span
+              class="field-type">TIMESTAMPTZ</span><span class="field-notes"></span></div>
+        </div>
+      </div>
+
+      <div class="schema-table">
+        <div class="schema-header"><span class="table-name">sessions</span><span class="table-desc">Records of completed
+            activity sessions</span></div>
+        <div class="schema-fields">
+          <div class="field-row"><span class="field-name pk">id</span><span class="field-type">UUID PK</span><span
+              class="field-notes"></span></div>
+          <div class="field-row"><span class="field-name fk">child_id</span><span class="field-type">UUID FK</span><span
+              class="field-notes">→ children.id</span></div>
+          <div class="field-row"><span class="field-name fk">activity_id</span><span class="field-type">UUID
+              FK</span><span class="field-notes">→ activities.id</span></div>
+          <div class="field-row"><span class="field-name fk">user_id</span><span class="field-type">UUID FK</span><span
+              class="field-notes">→ users.id (the parent who ran it)</span></div>
+          <div class="field-row"><span class="field-name">completed</span><span class="field-type">BOOLEAN</span><span
+              class="field-notes">Did they finish the full activity?</span></div>
+          <div class="field-row"><span class="field-name">score</span><span class="field-type">JSONB</span><span
+              class="field-notes">{"correct": 4, "total": 5, "time_seconds": 180}</span></div>
+          <div class="field-row"><span class="field-name">parent_rating</span><span
+              class="field-type">INTEGER</span><span class="field-notes">1–5 star rating from parent
+              post-activity</span></div>
+          <div class="field-row"><span class="field-name">notes</span><span class="field-type">TEXT</span><span
+              class="field-notes">Parent observations (optional free text)</span></div>
+          <div class="field-row"><span class="field-name">played_at</span><span
+              class="field-type">TIMESTAMPTZ</span><span class="field-notes">When the session started</span></div>
+          <div class="field-row"><span class="field-name">duration_seconds</span><span
+              class="field-type">INTEGER</span><span class="field-notes">Actual time spent</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 05: API ENDPOINTS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section class="section" id="endpoints">
+      <div class="section-header">
+        <div class="section-num">// 05</div>
+        <h2 class="section-title">API Endpoint Specifications</h2>
+        <p class="section-desc">All endpoints return JSON. Protected routes require
+          <code>Authorization: Bearer &lt;token&gt;</code>.
+        </p>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Authentication — <code>/api/v1/auth</code></div>
+        <div class="endpoint-card">
+          <div class="endpoint-header"><span class="method-badge POST">POST</span><span
+              class="endpoint-path">/auth/register</span><span class="endpoint-desc">Create parent account</span></div>
+          <div class="endpoint-body">Body: <code>email, password, full_name</code> · Returns:
+            <code>user object + access_token</code>
+          </div>
+        </div>
+        <div class="endpoint-card">
+          <div class="endpoint-header"><span class="method-badge POST">POST</span><span
+              class="endpoint-path">/auth/login</span><span class="endpoint-desc">Password login</span></div>
+          <div class="endpoint-body">Body: <code>email, password</code> · Returns:
+            <code>access_token (15min) + refresh_token (30d)</code>
+          </div>
+        </div>
+        <div class="endpoint-card">
+          <div class="endpoint-header"><span class="method-badge POST">POST</span><span
+              class="endpoint-path">/auth/refresh</span><span class="endpoint-desc">Rotate access token</span></div>
+          <div class="endpoint-body">Body: <code>refresh_token</code> · Returns: new <code>access_token</code></div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Children — <code>/api/v1/children</code></div>
+        <div class="endpoint-card">
+          <div class="endpoint-header"><span class="method-badge GET">GET</span><span
+              class="endpoint-path">/children</span><span class="auth-badge">🔐 JWT</span></div>
+          <div class="endpoint-body">Returns all children belonging to authenticated parent. Includes active goal count.
+          </div>
+        </div>
+        <div class="endpoint-card">
+          <div class="endpoint-header"><span class="method-badge POST">POST</span><span
+              class="endpoint-path">/children</span><span class="auth-badge">🔐 JWT</span></div>
+          <div class="endpoint-body">Create child profile. Body: <code>name, date_of_birth, interests[]</code></div>
+        </div>
+        <div class="endpoint-card">
+          <div class="endpoint-header"><span class="method-badge GET">GET</span><span
+              class="endpoint-path">/children/{child_id}</span><span class="auth-badge">🔐 JWT</span></div>
+          <div class="endpoint-body">Full child profile with goals and recent session summary.</div>
+        </div>
+        <div class="endpoint-card">
+          <div class="endpoint-header"><span class="method-badge PUT">PUT</span><span
+              class="endpoint-path">/children/{child_id}/interests</span><span class="auth-badge">🔐 JWT</span></div>
+          <div class="endpoint-body">Update interests array. Triggers activity cache invalidation in Redis.</div>
+        </div>
+        <div class="endpoint-card">
+          <div class="endpoint-header"><span class="method-badge POST">POST</span><span
+              class="endpoint-path">/children/{child_id}/goals</span><span class="auth-badge">🔐 JWT</span></div>
+          <div class="endpoint-body">Add a developmental goal. Body: <code>domain, description, priority, set_by</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Activities — <code>/api/v1/activities</code></div>
+        <div class="endpoint-card">
+          <div class="endpoint-header"><span class="method-badge GET">GET</span><span
+              class="endpoint-path">/activities/next/{child_id}</span><span class="auth-badge">🔐 JWT</span></div>
+          <div class="endpoint-body">
+            <strong style="color:var(--white)">The core endpoint.</strong> Returns a complete SDUI payload for the next
+            activity. Flow:<br><br>
+            1. Check Redis cache for a pre-generated activity for this child<br>
+            2. If cache miss → call activity generator service → Claude API<br>
+            3. Validate generated JSON against Pydantic schema<br>
+            4. Store in DB, cache result, return to client<br><br>
+            Query params: <code>?force_regenerate=true</code> to bypass cache
+          </div>
+        </div>
+        <div class="endpoint-card">
+          <div class="endpoint-header"><span class="method-badge GET">GET</span><span
+              class="endpoint-path">/activities/{activity_id}</span><span class="auth-badge">🔐 JWT</span></div>
+          <div class="endpoint-body">Fetch a specific activity by ID. Used for replaying past activities.</div>
+        </div>
+        <div class="endpoint-card">
+          <div class="endpoint-header"><span class="method-badge GET">GET</span><span
+              class="endpoint-path">/activities/ui-config</span><span class="endpoint-desc">No auth required</span>
+          </div>
+          <div class="endpoint-body">Returns global app theme config. Called on app startup. Allows remote theme updates
+            without app release.</div>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Sessions — <code>/api/v1/sessions</code></div>
+        <div class="endpoint-card">
+          <div class="endpoint-header"><span class="method-badge POST">POST</span><span
+              class="endpoint-path">/sessions</span><span class="auth-badge">🔐 JWT</span></div>
+          <div class="endpoint-body">Save completed session. Body:
+            <code>child_id, activity_id, score, completed, parent_rating, notes, duration_seconds</code>
+          </div>
+        </div>
+        <div class="endpoint-card">
+          <div class="endpoint-header"><span class="method-badge GET">GET</span><span
+              class="endpoint-path">/sessions/{child_id}/history</span><span class="auth-badge">🔐 JWT</span></div>
+          <div class="endpoint-body">Paginated session history. Query params:
+            <code>?limit=20&offset=0&domain=communication</code>
+          </div>
+        </div>
+        <div class="endpoint-card">
+          <div class="endpoint-header"><span class="method-badge GET">GET</span><span
+              class="endpoint-path">/sessions/{child_id}/progress</span><span class="auth-badge">🔐 JWT</span></div>
+          <div class="endpoint-body">Aggregated progress metrics per goal domain. Returns data for Flutter progress
+            charts.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 06: SDUI SCHEMA -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section class="section" id="sdui-schema">
+      <div class="section-header">
+        <div class="section-num">// 06</div>
+        <h2 class="section-title">SDUI JSON Schema</h2>
+        <p class="section-desc">The complete structure of an activity payload. This is the contract between server and
+          Flutter client. The Pydantic models on the server <em>and</em> the Dart models on the client both implement
+          this schema.</p>
+      </div>
+
+      <div class="callout callout-warn">
+        <div class="callout-icon">⚠️</div>
+        <div class="callout-body"><strong>Schema discipline is critical.</strong> Every field must be validated by
+          Pydantic before the payload leaves the server. The Flutter client should never receive a malformed config — a
+          validation error server-side is far better than a crash in a parent's hands mid-activity.</div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">JSON</span><span class="code-file">GET
+            /activities/next/{child_id} → 200 OK</span></div>
+        <div class="code-body">{
+          <span class="s">"activity_id"</span>: <span class="s">"act_f3a9b2c1"</span>,
+          <span class="s">"version"</span>: <span class="s">"1.0"</span>, <span class="c">// Schema version for forward
+            compatibility</span>
+
+          <span class="s">"theme"</span>: {
+          <span class="s">"primary_color"</span>: <span class="s">"#0f2d1f"</span>,
+          <span class="s">"accent_color"</span>: <span class="s">"#d4882a"</span>,
+          <span class="s">"background_color"</span>: <span class="s">"#faf6ef"</span>,
+          <span class="s">"font_scale"</span>: <span class="num">1.0</span>, <span class="c">// Allows accessibility
+            scaling</span>
+          <span class="s">"border_radius"</span>: <span class="num">12</span>
+          },
+
+          <span class="s">"screen"</span>: {
+          <span class="s">"type"</span>: <span class="s">"game_screen"</span>,
+
+          <span class="s">"header"</span>: {
+          <span class="s">"title"</span>: <span class="s">"Let's sort these!"</span>,
+          <span class="s">"subtitle"</span>: <span class="s">"Help Mia find where things belong"</span>,
+          <span class="s">"progress"</span>: { <span class="s">"current"</span>: <span class="num">2</span>, <span
+            class="s">"total"</span>: <span class="num">5</span> },
+          <span class="s">"show_back_button"</span>: <span class="k">true</span>
+          },
+
+          <span class="s">"parent_prompt"</span>: {
+          <span class="s">"visible"</span>: <span class="k">true</span>,
+          <span class="s">"collapsible"</span>: <span class="k">true</span>,
+          <span class="s">"text"</span>: <span class="s">"Ask Mia: 'Where does the apple go?' Give her time before
+            helping."</span>,
+          <span class="s">"tip"</span>: <span class="s">"Wait at least 5 seconds before prompting."</span>
+          },
+
+          <span class="s">"game"</span>: {
+          <span class="s">"component_type"</span>: <span class="s">"matching_game"</span>, <span class="c">// Maps to
+            Flutter widget class</span>
+          <span class="s">"config"</span>: {
+          <span class="s">"items"</span>: [
+          {
+          <span class="s">"id"</span>: <span class="s">"item_1"</span>,
+          <span class="s">"label"</span>: <span class="s">"Apple"</span>,
+          <span class="s">"image_url"</span>: <span class="s">"https://cdn.synergy.ai/assets/apple.png"</span>,
+          <span class="s">"category"</span>: <span class="s">"food"</span>
+          },
+          {
+          <span class="s">"id"</span>: <span class="s">"item_2"</span>,
+          <span class="s">"label"</span>: <span class="s">"Fire Truck"</span>,
+          <span class="s">"image_url"</span>: <span class="s">"https://cdn.synergy.ai/assets/firetruck.png"</span>,
+          <span class="s">"category"</span>: <span class="s">"vehicles"</span>
+          }
+          ],
+          <span class="s">"categories"</span>: [
+          { <span class="s">"id"</span>: <span class="s">"food"</span>, <span class="s">"label"</span>: <span
+            class="s">"Food"</span>, <span class="s">"icon"</span>: <span class="s">"🍎"</span> },
+          { <span class="s">"id"</span>: <span class="s">"vehicles"</span>, <span class="s">"label"</span>: <span
+            class="s">"Vehicles"</span>, <span class="s">"icon"</span>: <span class="s">"🚗"</span> }
+          ],
+          <span class="s">"time_limit_seconds"</span>: <span class="num">120</span>,
+          <span class="s">"celebration_on_correct"</span>: <span class="k">true</span>,
+          <span class="s">"allow_retry"</span>: <span class="k">true</span>
+          }
+          }
+          },
+
+          <span class="s">"on_complete"</span>: {
+          <span class="s">"action"</span>: <span class="s">"post_session"</span>,
+          <span class="s">"endpoint"</span>: <span class="s">"/api/v1/sessions"</span>,
+          <span class="s">"next_screen"</span>: <span class="s">"celebration"</span>, <span class="c">// Flutter
+            navigates here after POST</span>
+          <span class="s">"celebration_config"</span>: {
+          <span class="s">"message"</span>: <span class="s">"Amazing work, Mia! 🌟"</span>,
+          <span class="s">"animation"</span>: <span class="s">"confetti"</span>
+          }
+          },
+
+          <span class="s">"metadata"</span>: {
+          <span class="s">"goal_id"</span>: <span class="s">"goal_abc123"</span>,
+          <span class="s">"domain"</span>: <span class="s">"cognitive"</span>,
+          <span class="s">"estimated_minutes"</span>: <span class="num">8</span>,
+          <span class="s">"difficulty"</span>: <span class="s">"beginner"</span>
+          }
+          }
+        </div>
+      </div>
+
+      <div class="subsection" style="margin-top:32px;">
+        <div class="subsection-title">Pydantic Schema (Python)</div>
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">Python</span><span
+              class="code-file">app/schemas/activity.py</span></div>
+          <div class="code-body"><span class="k">from</span> pydantic <span class="k">import</span> BaseModel, HttpUrl
+            <span class="k">from</span> typing <span class="k">import</span> Literal, Optional, <span
+              class="n">Any</span>
+            <span class="k">from</span> enum <span class="k">import</span> Enum
+
+            <span class="k">class</span> <span class="n">GameType</span>(str, Enum):
+            matching = <span class="s">"matching_game"</span>
+            sequencing = <span class="s">"sequencing_game"</span>
+            naming = <span class="s">"naming_game"</span>
+            imitation = <span class="s">"imitation_game"</span>
+
+            <span class="k">class</span> <span class="n">ThemeConfig</span>(BaseModel):
+            primary_color: str
+            accent_color: str
+            background_color: str
+            font_scale: float = <span class="num">1.0</span>
+            border_radius: int = <span class="num">12</span>
+
+            <span class="k">class</span> <span class="n">HeaderConfig</span>(BaseModel):
+            title: str
+            subtitle: Optional[str] = <span class="k">None</span>
+            progress: Optional[dict] = <span class="k">None</span>
+            show_back_button: bool = <span class="k">True</span>
+
+            <span class="k">class</span> <span class="n">ParentPromptConfig</span>(BaseModel):
+            visible: bool
+            collapsible: bool = <span class="k">True</span>
+            text: str
+            tip: Optional[str] = <span class="k">None</span>
+
+            <span class="k">class</span> <span class="n">GameConfig</span>(BaseModel):
+            component_type: <span class="n">GameType</span>
+            config: dict[str, <span class="n">Any</span>] <span class="c"># Flexible — validated per game type</span>
+
+            <span class="k">class</span> <span class="n">OnComplete</span>(BaseModel):
+            action: Literal[<span class="s">"post_session"</span>, <span class="s">"navigate"</span>, <span
+              class="s">"repeat"</span>]
+            endpoint: Optional[str] = <span class="k">None</span>
+            next_screen: str
+            celebration_config: Optional[dict] = <span class="k">None</span>
+
+            <span class="k">class</span> <span class="n">ActivityPayload</span>(BaseModel):
+            activity_id: str
+            version: str = <span class="s">"1.0"</span>
+            theme: <span class="n">ThemeConfig</span>
+            screen: dict <span class="c"># Contains header, parent_prompt, game</span>
+            on_complete: <span class="n">OnComplete</span>
+            metadata: dict[str, <span class="n">Any</span>]
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 07: AI ENGINE -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section class="section" id="ai-engine">
+      <div class="section-header">
+        <div class="section-num">// 07</div>
+        <h2 class="section-title">AI Activity Generation Engine</h2>
+        <p class="section-desc">The generator is the brain of Synergy. It takes a child's profile and produces a
+          validated SDUI activity payload using Claude's structured output via <code>tool_use</code>.</p>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Generation Flow</div>
+        <div class="arch-box"><span style="color:var(--muted)">GET /activities/next/{child_id}</span>
+          <span style="color:var(--muted)">│</span>
+          ▼
+          <span style="color:var(--blue)">[1] Check Redis cache</span> → <span style="color:var(--green)">HIT: return
+            cached payload</span>
+          <span style="color:var(--muted)">│ MISS</span>
+          ▼
+          <span style="color:var(--blue)">[2] Load child context from Supabase</span>
+          <span style="color:var(--muted)">• name, age, interests</span>
+          <span style="color:var(--muted)">• active goals (ordered by priority)</span>
+          <span style="color:var(--muted)">• last 5 sessions (avoid repetition)</span>
+          <span style="color:var(--muted)">│</span>
+          ▼
+          <span style="color:var(--blue)">[3] Build structured prompt</span>
+          <span style="color:var(--muted)">• System: therapy framework instructions</span>
+          <span style="color:var(--muted)">• User: child profile + goal context</span>
+          <span style="color:var(--muted)">• Tool: ActivityPayload JSON schema</span>
+          <span style="color:var(--muted)">│</span>
+          ▼
+          <span style="color:var(--purple)">[4] Claude API call (tool_use mode)</span>
+          <span style="color:var(--muted)">• Forces structured JSON output</span>
+          <span style="color:var(--muted)">• No free-text hallucination risk</span>
+          <span style="color:var(--muted)">│</span>
+          ▼
+          <span style="color:var(--blue)">[5] Validate response</span>
+          <span style="color:var(--green)">PASS: store in DB, cache 4hrs, return</span>
+          <span style="color:var(--red)">FAIL: log error, fall back to template activity</span>
+        </div>
+      </div>
+
+      <div class="subsection">
+        <div class="subsection-title">Activity Generator Service</div>
+        <div class="code-block">
+          <div class="code-header"><span class="code-lang">Python</span><span
+              class="code-file">app/services/activity_generator.py</span></div>
+          <div class="code-body"><span class="k">from</span> google <span class="k">import</span> genai
+            <span class="k">from</span> app.schemas.activity <span class="k">import</span> ActivityPayload
+            <span class="k">from</span> app.models.child <span class="k">import</span> Child
+            <span class="k">import</span> json
+
+            <span class="v">client</span> = genai.Client()
+
+            <span class="k">async def</span> <span class="f">generate_activity</span>(child: Child, goals: list,
+            recent_sessions: list) -> ActivityPayload:
+
+            <span class="c"># Build rich context for Claude</span>
+            <span class="v">child_context</span> = {
+            <span class="s">"name"</span>: child.name,
+            <span class="s">"age_years"</span>: child.age_in_years,
+            <span class="s">"interests"</span>: child.interests,
+            <span class="s">"active_goals"</span>: [
+            {<span class="s">"domain"</span>: g.domain, <span class="s">"description"</span>: g.description, <span
+              class="s">"priority"</span>: g.priority}
+            <span class="k">for</span> g <span class="k">in</span> goals
+            ],
+            <span class="s">"recent_game_types"</span>: [s.game_type <span class="k">for</span> s <span
+              class="k">in</span> recent_sessions[-5:]]
+            }
+
+            <span class="v">response</span> = <span class="k">await</span> client.models.generate_content(
+            model=<span class="s">"gemini-3-flash-preview"</span>,
+            max_tokens=<span class="num">2048</span>,
+            system=<span class="s">"""You are a specialist in autism therapy and child development.
+              Generate structured activity configurations for parents to use at home.
+              Activities must be evidence-based (ABA / naturalistic teaching),
+              5-10 minutes long, and appropriate for the child's age and goals.
+              Always vary game types from recent sessions. Never use clinical jargon
+              in parent-facing text — keep instructions warm, simple, and encouraging."""</span>,
+            tools=[{
+            <span class="s">"name"</span>: <span class="s">"create_activity"</span>,
+            <span class="s">"description"</span>: <span class="s">"Creates a structured SDUI activity payload"</span>,
+            <span class="s">"input_schema"</span>: ActivityPayload.model_json_schema()
+            }],
+            tool_choice={<span class="s">"type"</span>: <span class="s">"tool"</span>, <span class="s">"name"</span>:
+            <span class="s">"create_activity"</span>},
+            messages=[{
+            <span class="s">"role"</span>: <span class="s">"user"</span>,
+            <span class="s">"content"</span>: <span class="f">f</span><span class="s">"Generate a home activity for this
+              child: {json.dumps(child_context)}"</span>
+            }]
+            )
+
+            <span class="c"># Extract tool_use result and validate with Pydantic</span>
+            <span class="v">tool_result</span> = next(b <span class="k">for</span> b <span class="k">in</span>
+            response.text <span class="k">if</span> b.type == <span class="s">"tool_use"</span>)
+            <span class="k">return</span> ActivityPayload.model_validate(tool_result.input) <span class="c"># Raises on
+              bad output</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout callout-info">
+        <div class="callout-icon">ℹ️</div>
+        <div class="callout-body"><strong>Why <code>tool_use</code> instead of prompting for JSON?</strong> Claude's
+          tool_use mode guarantees structured output — it cannot deviate from the schema. Asking Claude to "respond in
+          JSON" in a regular message still allows freeform responses. For a healthcare-adjacent product, structured
+          output is non-negotiable.</div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 08: AUTH -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section class="section" id="auth">
+      <div class="section-header">
+        <div class="section-num">// 08</div>
+        <h2 class="section-title">Auth &amp; Security</h2>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">Python</span><span
+            class="code-file">app/core/security.py</span></div>
+        <div class="code-body"><span class="k">from</span> datetime <span class="k">import</span> datetime, timedelta
+          <span class="k">from</span> jose <span class="k">import</span> jwt, JWTError
+          <span class="k">from</span> passlib.context <span class="k">import</span> CryptContext
+          <span class="k">from</span> app.core.config <span class="k">import</span> settings
+
+          <span class="v">pwd_context</span> = CryptContext(schemes=[<span class="s">"bcrypt"</span>], deprecated=<span
+            class="s">"auto"</span>)
+
+          <span class="k">def</span> <span class="f">create_access_token</span>(user_id: str) -> str:
+          <span class="v">payload</span> = {
+          <span class="s">"sub"</span>: user_id,
+          <span class="s">"exp"</span>: datetime.utcnow() + timedelta(minutes=<span class="num">15</span>),
+          <span class="s">"type"</span>: <span class="s">"access"</span>
+          }
+          <span class="k">return</span> jwt.encode(payload, settings.SECRET_KEY, algorithm=<span
+            class="s">"HS256"</span>)
+
+          <span class="k">def</span> <span class="f">create_refresh_token</span>(user_id: str) -> str:
+          <span class="v">payload</span> = {
+          <span class="s">"sub"</span>: user_id,
+          <span class="s">"exp"</span>: datetime.utcnow() + timedelta(days=<span class="num">30</span>),
+          <span class="s">"type"</span>: <span class="s">"refresh"</span>
+          }
+          <span class="k">return</span> jwt.encode(payload, settings.SECRET_KEY, algorithm=<span
+            class="s">"HS256"</span>)
+
+          <span class="c"># FastAPI dependency — inject into any protected route</span>
+          <span class="k">async def</span> <span class="f">get_current_user</span>(token: str = Depends(oauth2_scheme),
+          db = Depends(get_db)):
+          <span class="k">try</span>:
+          <span class="v">payload</span> = jwt.decode(token, settings.SECRET_KEY, algorithms=[<span
+            class="s">"HS256"</span>])
+          <span class="v">user_id</span>: str = payload.get(<span class="s">"sub"</span>)
+          <span class="k">if</span> payload.get(<span class="s">"type"</span>) != <span class="s">"access"</span>: <span
+            class="k">raise</span> credentials_exception
+          <span class="k">except</span> JWTError:
+          <span class="k">raise</span> credentials_exception
+          <span class="k">return</span> <span class="k">await</span> db.get(User, user_id)
+        </div>
+      </div>
+
+      <div class="callout callout-warn">
+        <div class="callout-icon">🔒</div>
+        <div class="callout-body"><strong>Child data is sensitive.</strong> Enforce row-level security: every DB query
+          for child/session data must filter by <code>parent_id = current_user.id</code>. Never return child data for a
+          parent who doesn't own it. This is the single most important security invariant in the entire codebase.</div>
+      </div>
+    </section>
+
+    <hr class="divider">
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 09: FLUTTER STRUCTURE -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section class="section" id="flutter-structure">
+      <div class="section-header">
+        <div class="section-num">// 09</div>
+        <h2 class="section-title">Flutter pubspec &amp; Key Dependencies</h2>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">YAML</span><span class="code-file">pubspec.yaml</span></div>
+        <div class="code-body">dependencies:
+          flutter:
+          sdk: flutter
+
+          <span class="c"># Networking</span>
+          dio: ^5.4.0 <span class="c"># HTTP client with interceptors</span>
+          pretty_dio_logger: ^1.3.1 <span class="c"># Dev logging</span>
+
+          <span class="c"># State management</span>
+          flutter_riverpod: ^2.5.1
+          riverpod_annotation: ^2.3.5
+
+          <span class="c"># Navigation</span>
+          go_router: ^13.2.0
+
+          <span class="c"># Local storage (token persistence)</span>
+          flutter_secure_storage: ^9.0.0
+
+          <span class="c"># Animations</span>
+          lottie: ^3.1.0 <span class="c"># Celebration animations</span>
+          flutter_animate: ^4.5.0 <span class="c"># Micro-interactions</span>
+
+          <span class="c"># UI utilities</span>
+          cached_network_image: ^3.3.1 <span class="c"># Activity images</span>
+          shimmer: ^3.0.0 <span class="c"># Loading skeletons</span>
+          gap: ^3.0.1 <span class="c"># Spacing widget</span>
+
+          <span class="c"># JSON serialization</span>
+          json_annotation: ^4.9.0
+
+          dev_dependencies:
+          build_runner: ^2.4.9
+          json_serializable: ^6.8.0
+          riverpod_generator: ^2.4.3
+          flutter_lints: ^3.0.0
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 10: SDUI ENGINE (FLUTTER) -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section class="section" id="sdui-engine">
+      <div class="section-header">
+        <div class="section-num">// 10</div>
+        <h2 class="section-title">Flutter SDUI Engine Design</h2>
+        <p class="section-desc">The engine is a pure JSON-to-Widget translator. It has no business logic — it only knows
+          how to map component types to pre-built widgets.</p>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">Dart</span><span
+            class="code-file">lib/sdui/component_registry.dart</span></div>
+        <div class="code-body"><span class="c">/// Central registry mapping server component_type strings → Widget
+            builders</span>
+          <span class="c">/// To add a new game: register it here + build the widget in /games/</span>
+
+          <span class="k">typedef</span> <span class="n">ComponentBuilder</span> = Widget <span
+            class="k">Function</span>(Map&lt;String, dynamic&gt; config, <span class="n">SessionController</span>
+          session);
+
+          <span class="k">class</span> <span class="n">ComponentRegistry</span> {
+          <span class="k">static final</span> Map&lt;String, <span class="n">ComponentBuilder</span>&gt; _builders = {
+
+          <span class="c">// ── Game widgets ──────────────────────────────────────</span>
+          <span class="s">'matching_game'</span>: (config, session) => <span class="n">MatchingGame</span>(config:
+          config, session: session),
+          <span class="s">'sequencing_game'</span>: (config, session) => <span class="n">SequencingGame</span>(config:
+          config, session: session),
+          <span class="s">'naming_game'</span>: (config, session) => <span class="n">NamingGame</span>(config: config,
+          session: session),
+          <span class="s">'imitation_game'</span>: (config, session) => <span class="n">ImitationGame</span>(config:
+          config, session: session),
+
+          <span class="c">// ── UI components ─────────────────────────────────────</span>
+          <span class="s">'header'</span>: (config, _) => <span class="n">SduiHeader</span>.fromJson(config),
+          <span class="s">'progress_bar'</span>: (config, _) => <span class="n">SduiProgressBar</span>.fromJson(config),
+          <span class="s">'parent_prompt'</span>: (config, _) => <span
+            class="n">SduiParentPrompt</span>.fromJson(config),
+          <span class="s">'celebration'</span>: (config, _) => <span class="n">SduiCelebration</span>.fromJson(config),
+          };
+
+          <span class="k">static</span> Widget <span class="f">build</span>(String componentType, Map&lt;String,
+          dynamic&gt; config, <span class="n">SessionController</span> session) {
+          <span class="k">final</span> builder = _builders[componentType];
+          <span class="k">if</span> (builder == <span class="k">null</span>) {
+          <span class="c">// Graceful degradation — never crash, show placeholder</span>
+          <span class="k">return</span> <span class="n">UnknownComponentPlaceholder</span>(type: componentType);
+          }
+          <span class="k">return</span> builder(config, session);
+          }
+          }
+        </div>
+      </div>
+
+      <div class="code-block" style="margin-top:20px;">
+        <div class="code-header"><span class="code-lang">Dart</span><span
+            class="code-file">lib/sdui/screen_builder.dart</span></div>
+        <div class="code-body"><span class="c">/// Takes the full SDUI payload and builds the screen Widget tree</span>
+          <span class="k">class</span> <span class="n">ScreenBuilder</span> <span class="k">extends</span> <span
+            class="n">ConsumerWidget</span> {
+          <span class="k">final</span> <span class="n">ActivityPayload</span> payload;
+          <span class="k">const</span> <span class="n">ScreenBuilder</span>({<span class="k">required</span> <span
+            class="k">this</span>.payload, <span class="k">super</span>.key});
+
+          <span class="k">@override</span>
+          Widget <span class="f">build</span>(<span class="n">BuildContext</span> context, <span
+            class="n">WidgetRef</span> ref) {
+          <span class="k">final</span> session = ref.watch(sessionControllerProvider(payload.activityId));
+          <span class="k">final</span> screen = payload.screen;
+          <span class="k">final</span> theme = payload.theme;
+
+          <span class="k">return</span> <span class="n">SduiThemeProvider</span>(
+          theme: theme,
+          child: <span class="n">Scaffold</span>(
+          backgroundColor: <span class="n">Color</span>(<span class="f">hexToInt</span>(theme.backgroundColor)),
+          body: <span class="n">SafeArea</span>(
+          child: <span class="n">Column</span>(
+          children: [
+          <span class="c">// Header — always rendered from server config</span>
+          <span class="n">ComponentRegistry</span>.<span class="f">build</span>(<span class="s">'header'</span>,
+          screen[<span class="s">'header'</span>], session),
+
+          <span class="c">// Parent prompt — collapsible drawer</span>
+          <span class="k">if</span> (screen[<span class="s">'parent_prompt'</span>]?[<span class="s">'visible'</span>]
+          == <span class="k">true</span>)
+          <span class="n">ComponentRegistry</span>.<span class="f">build</span>(<span class="s">'parent_prompt'</span>,
+          screen[<span class="s">'parent_prompt'</span>], session),
+
+          <span class="c">// Game — dynamically resolved from component_type</span>
+          <span class="n">Expanded</span>(
+          child: <span class="n">ComponentRegistry</span>.<span class="f">build</span>(
+          screen[<span class="s">'game'</span>][<span class="s">'component_type'</span>],
+          screen[<span class="s">'game'</span>][<span class="s">'config'</span>],
+          session,
+          ),
+          ),
+          ],
+          ),
+          ),
+          ),
+          );
+          }
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- SECTION 11: GAME WIDGETS -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section class="section" id="game-widgets">
+      <div class="section-header">
+        <div class="section-num">// 11</div>
+        <h2 class="section-title">Game Widget Registry</h2>
+        <p class="section-desc">All games extend <code>BaseGame</code> and implement a standard interface. They receive
+          server config as a Map and report completion via <code>SessionController</code>.</p>
+      </div>
+
+      <table class="spec-table">
+        <thead>
+          <tr>
+            <th>component_type</th>
+            <th>Description</th>
+            <th>Config Keys</th>
+            <th>Therapy Domain</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>matching_game</code></td>
+            <td>Drag items into category buckets</td>
+            <td>items, categories, time_limit</td>
+            <td>Cognitive / Classification</td>
+          </tr>
+          <tr>
+            <td><code>sequencing_game</code></td>
+            <td>Arrange steps in correct order</td>
+            <td>steps, shuffle, show_numbers</td>
+            <td>Cognitive / Planning</td>
+          </tr>
+          <tr>
+            <td><code>naming_game</code></td>
+            <td>Tap the image that matches a label</td>
+            <td>items, distractors, audio_prompt</td>
+            <td>Communication / Vocabulary</td>
+          </tr>
+          <tr>
+            <td><code>imitation_game</code></td>
+            <td>Watch + tap to replay a gesture sequence</td>
+            <td>sequence, delay_ms, repetitions</td>
+            <td>Social / Imitation</td>
+          </tr>
+          <tr>
+            <td><code>choice_game</code></td>
+            <td>Make a 2–4 option choice (Phase 2)</td>
+            <td>prompt, options, correct_id</td>
+            <td>Communication / Choice-making</td>
+          </tr>
+          <tr>
+            <td><code>emotion_game</code></td>
+            <td>Match faces to emotion labels (Phase 2)</td>
+            <td>emotions, difficulty</td>
+            <td>Social / Emotional recognition</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="code-block">
+        <div class="code-header"><span class="code-lang">Dart</span><span
+            class="code-file">lib/games/base_game.dart</span></div>
+        <div class="code-body"><span class="c">/// All game widgets must extend this abstract class</span>
+          <span class="k">abstract class</span> <span class="n">BaseGame</span> <span class="k">extends</span> <span
+            class="n">ConsumerStatefulWidget</span> {
+          <span class="k">final</span> Map&lt;String, dynamic&gt; config;
+          <span class="k">final</span> <span class="n">SessionController</span> session;
+          <span class="k">const</span> <span class="n">BaseGame</span>({<span class="k">required</span> <span
+            class="k">this</span>.config, <span class="k">required</span> <span class="k">this</span>.session, <span
+            class="k">super</span>.key});
+          }
+
+          <span class="k">abstract class</span> <span class="n">BaseGameState</span>&lt;<span class="n">T</span> <span
+            class="k">extends</span> <span class="n">BaseGame</span>&gt; <span class="k">extends</span> <span
+            class="n">ConsumerState</span>&lt;<span class="n">T</span>&gt; {
+          int correctCount = <span class="num">0</span>;
+          int totalCount = <span class="num">0</span>;
+          <span class="n">DateTime</span>? startTime;
+
+          <span class="k">@override</span>
+          <span class="k">void</span> <span class="f">initState</span>() {
+          <span class="k">super</span>.<span class="f">initState</span>();
+          startTime = <span class="n">DateTime</span>.now();
+          }
+
+          <span class="c">/// Called when game is complete — reports to SessionController</span>
+          <span class="k">void</span> <span class="f">completeGame</span>() {
+          <span class="k">final</span> duration = <span class="n">DateTime</span>.now().<span
+            class="f">difference</span>(startTime!).inSeconds;
+          widget.session.<span class="f">recordResult</span>(
+          correct: correctCount,
+          total: totalCount,
+          durationSeconds: duration,
+          );
+          }
+
+          <span class="c">/// Called on each correct answer — plays celebration micro-animation</span>
+          <span class="k">void</span> <span class="f">onCorrectAnswer</span>() {
+          correctCount++;
+          <span class="c">// Trigger haptic + visual feedback</span>
+          }
+          }
+        </div>
+      </div>
+    </section>
+
+    <hr class="divider">
+
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- IMPLEMENTATION PHASES -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <section class="section" id="phase1">
+      <div class="section-header">
+        <div class="section-num">// 12 — Implementation</div>
+        <h2 class="section-title">Step-by-Step Build Plan</h2>
+        <p class="section-desc">5 phases, sequenced so the API and Flutter client can develop in parallel after Phase 1.
+          Each phase ends with a working, testable milestone.</p>
+      </div>
+
+      <div class="phase-card">
+        <div class="phase-header">
+          <span class="phase-badge ph1">Phase 1</span>
+          <span class="phase-title">Foundation — Project Setup & Contracts</span>
+          <span class="phase-meta">Week 1 · Days 1–5</span>
+        </div>
+        <div class="phase-body">
+          <ul class="task-list">
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Scaffold FastAPI project with async SQLAlchemy + Alembic</div>
+                <div class="task-desc">Create the folder structure, configure pydantic-settings for env vars
+                  (<code>DATABASE_URL</code>, <code>REDIS_URL</code>, <code>GEMINI_API_KEY</code>,
+                  <code>SECRET_KEY</code>), set up async database engine with connection pooling.
+                </div>
+                <div class="task-tags"><span class="task-tag tag-api">FastAPI</span><span
+                    class="task-tag tag-db">Database</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Write all SQLAlchemy models + run first Alembic migration</div>
+                <div class="task-desc">Define <code>users</code>, <code>children</code>, <code>goals</code>,
+                  <code>activities</code>, <code>sessions</code> tables. The <code>activities.ui_config</code> field
+                  must be JSONB. Run <code>alembic upgrade head</code> against a local Postgres instance.
+                </div>
+                <div class="task-tags"><span class="task-tag tag-db">Database</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Define all Pydantic schemas — especially <code>ActivityPayload</code></div>
+                <div class="task-desc">This is the contract. Write it carefully — both the AI generator and the Flutter
+                  client are built around it. Add <code>.model_json_schema()</code> export for Claude tool_use
+                  integration.</div>
+                <div class="task-tags"><span class="task-tag tag-api">FastAPI</span><span
+                    class="task-tag tag-ai">AI</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Create Flutter project, install dependencies, set up folder structure</div>
+                <div class="task-desc">Run <code>flutter create synergy_app</code>, install all pubspec dependencies,
+                  create the folder structure. Configure go_router with placeholder routes for auth, home, activity, and
+                  progress screens.</div>
+                <div class="task-tags"><span class="task-tag tag-flutter">Flutter</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Build Dart models from the SDUI JSON schema</div>
+                <div class="task-desc">Create <code>ActivityPayload</code>, <code>ThemeConfig</code>,
+                  <code>GameConfig</code>, etc. in Dart using <code>json_serializable</code>. These mirror the Pydantic
+                  models 1:1. This step unblocks all Flutter UI work.
+                </div>
+                <div class="task-tags"><span class="task-tag tag-flutter">Flutter</span></div>
+              </div>
+            </li>
+          </ul>
+          <div class="callout callout-tip" style="margin-top:20px;">
+            <div class="callout-icon">✅</div>
+            <div class="callout-body"><strong>Phase 1 milestone:</strong> Local Postgres DB with all tables. FastAPI
+              server starts and returns 200 on <code>GET /health</code>. Flutter app launches with placeholder screens.
+              Both teams have agreed on the SDUI JSON schema.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase-card" id="phase2">
+        <div class="phase-header">
+          <span class="phase-badge ph2">Phase 2</span>
+          <span class="phase-title">Core API — Auth, Children, Static Activities</span>
+          <span class="phase-meta">Week 2 · Days 6–12</span>
+        </div>
+        <div class="phase-body">
+          <ul class="task-list">
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Implement JWT auth — register, login, refresh, get_current_user dependency</div>
+                <div class="task-desc">Use <code>python-jose</code> for JWT and <code>passlib[bcrypt]</code> for
+                  hashing. The <code>get_current_user</code> FastAPI dependency is used on all protected routes.</div>
+                <div class="task-tags"><span class="task-tag tag-api">FastAPI</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Build children router — CRUD for profiles, goals, and interests</div>
+                <div class="task-desc">All queries must filter by <code>parent_id = current_user.id</code>. Return 403
+                  if a parent tries to access another parent's child data.</div>
+                <div class="task-tags"><span class="task-tag tag-api">FastAPI</span><span
+                    class="task-tag tag-db">Database</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Build <code>GET /activities/next</code> with hardcoded template activities</div>
+                <div class="task-desc">Return a valid, hardcoded SDUI payload — no AI yet. This unblocks the Flutter
+                  team immediately to build the SDUI renderer against real data. Create 2–3 template activities covering
+                  different game types.</div>
+                <div class="task-tags"><span class="task-tag tag-api">FastAPI</span><span
+                    class="task-tag tag-flutter">Flutter</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Build sessions router — save result, fetch history</div>
+                <div class="task-desc">Accepts the session POST from Flutter after game completion. Returns paginated
+                  history and basic progress aggregation.</div>
+                <div class="task-tags"><span class="task-tag tag-api">FastAPI</span><span
+                    class="task-tag tag-db">Database</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Write automated tests for all auth + child endpoints</div>
+                <div class="task-desc">Use <code>pytest</code> + <code>httpx.AsyncClient</code>. Test the row-level
+                  security invariant explicitly — a test that proves parent A cannot access parent B's children.</div>
+                <div class="task-tags"><span class="task-tag tag-api">FastAPI</span></div>
+              </div>
+            </li>
+          </ul>
+          <div class="callout callout-tip" style="margin-top:20px;">
+            <div class="callout-icon">✅</div>
+            <div class="callout-body"><strong>Phase 2 milestone:</strong> Full working REST API with auth. Flutter team
+              can register, log in, fetch children, and get a hardcoded SDUI activity payload. Both teams can now work
+              in parallel.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase-card" id="phase3">
+        <div class="phase-header">
+          <span class="phase-badge ph3">Phase 3</span>
+          <span class="phase-title">Flutter SDUI Engine + First Two Game Widgets</span>
+          <span class="phase-meta">Week 3 · Days 13–20</span>
+        </div>
+        <div class="phase-body">
+          <ul class="task-list">
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Build API client (Dio) with JWT interceptor and token refresh logic</div>
+                <div class="task-desc">The interceptor catches 401 responses, silently calls <code>/auth/refresh</code>,
+                  updates stored tokens, and retries the original request — transparent to all other code.</div>
+                <div class="task-tags"><span class="task-tag tag-flutter">Flutter</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Build auth screens (login + register) and Riverpod auth provider</div>
+                <div class="task-desc">Store tokens in <code>flutter_secure_storage</code>. Auth state provider exposes
+                  <code>isAuthenticated</code> — go_router redirect guards watch this to protect routes.
+                </div>
+                <div class="task-tags"><span class="task-tag tag-flutter">Flutter</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Build the SDUI engine: <code>ComponentRegistry</code> +
+                  <code>ScreenBuilder</code>
+                </div>
+                <div class="task-desc">Implement <code>screen_builder.dart</code> and
+                  <code>component_registry.dart</code> exactly as specified. At this point the registry can map to
+                  placeholder widgets — real games come next.
+                </div>
+                <div class="task-tags"><span class="task-tag tag-flutter">Flutter</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Build <code>MatchingGame</code> and <code>NamingGame</code> widgets</div>
+                <div class="task-desc">Both must extend <code>BaseGame</code>. MatchingGame uses Flutter's drag-and-drop
+                  API. NamingGame uses a grid of tappable image cards. Both report completion via
+                  <code>session.recordResult()</code>.
+                </div>
+                <div class="task-tags"><span class="task-tag tag-flutter">Flutter</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Build dynamic theming — apply server ThemeConfig to Flutter MaterialTheme</div>
+                <div class="task-desc">On app launch, call <code>GET /activities/ui-config</code> and apply the returned
+                  tokens as a custom MaterialTheme. Cache locally with <code>shared_preferences</code> for offline
+                  support.</div>
+                <div class="task-tags"><span class="task-tag tag-flutter">Flutter</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Wire the full activity flow: fetch → render → play → submit session</div>
+                <div class="task-desc">Complete the loop. After game completion, <code>SessionController</code> posts to
+                  <code>/sessions</code>, shows the celebration screen from <code>on_complete.celebration_config</code>,
+                  then navigates home.
+                </div>
+                <div class="task-tags"><span class="task-tag tag-flutter">Flutter</span></div>
+              </div>
+            </li>
+          </ul>
+          <div class="callout callout-tip" style="margin-top:20px;">
+            <div class="callout-icon">✅</div>
+            <div class="callout-body"><strong>Phase 3 milestone:</strong> A parent can log in, see their child, tap
+              "Start Activity", play a matching or naming game rendered entirely from server JSON, and have the result
+              saved. The full SDUI loop is working end-to-end.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase-card" id="phase4">
+        <div class="phase-header">
+          <span class="phase-badge ph4">Phase 4</span>
+          <span class="phase-title">AI Activity Generation Engine</span>
+          <span class="phase-meta">Week 4 · Days 21–26</span>
+        </div>
+        <div class="phase-body">
+          <ul class="task-list">
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Build <code>ActivityGenerator</code> service with Claude tool_use</div>
+                <div class="task-desc">Implement the generator as shown in Section 07. Pass
+                  <code>ActivityPayload.model_json_schema()</code> directly as the tool schema — no manual schema
+                  duplication.
+                </div>
+                <div class="task-tags"><span class="task-tag tag-ai">AI</span><span
+                    class="task-tag tag-api">FastAPI</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Build <code>ActivityValidator</code> service — validate + fallback</div>
+                <div class="task-desc">After generation, validate the payload with Pydantic. On failure, log the bad
+                  output and return the best-matching template activity instead. Never let a validation error reach the
+                  client.</div>
+                <div class="task-tags"><span class="task-tag tag-ai">AI</span><span
+                    class="task-tag tag-api">FastAPI</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Add Redis caching to <code>GET /activities/next</code></div>
+                <div class="task-desc">Cache the generated activity keyed by <code>child_id</code> for 4 hours. On child
+                  profile update (interests or goals), invalidate the cache. This prevents unnecessary Claude API calls.
+                </div>
+                <div class="task-tags"><span class="task-tag tag-api">FastAPI</span><span
+                    class="task-tag tag-db">Redis</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Prompt engineering iteration — refine for activity quality</div>
+                <div class="task-desc">Run 20+ generations with real child profiles. Evaluate: are activities
+                  age-appropriate? Do they match the goal domain? Is parent-facing language warm and jargon-free?
+                  Iterate on the system prompt.</div>
+                <div class="task-tags"><span class="task-tag tag-ai">AI</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Build <code>GET /sessions/{child_id}/progress</code> analytics endpoint</div>
+                <div class="task-desc">Aggregate session scores by goal domain over time. Return structured data for
+                  Flutter progress charts (completion rate, average score, streak days).</div>
+                <div class="task-tags"><span class="task-tag tag-api">FastAPI</span><span
+                    class="task-tag tag-db">Database</span></div>
+              </div>
+            </li>
+          </ul>
+          <div class="callout callout-tip" style="margin-top:20px;">
+            <div class="callout-icon">✅</div>
+            <div class="callout-body"><strong>Phase 4 milestone:</strong> Activities are now AI-generated, personalized
+              to the child's goals and interests, cached efficiently, and always validated before delivery. Template
+              fallback ensures zero downtime if Claude is unavailable.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="phase-card" id="phase5">
+        <div class="phase-header">
+          <span class="phase-badge ph5">Phase 5</span>
+          <span class="phase-title">Polish, Deploy & Investor Readiness</span>
+          <span class="phase-meta">Week 5 · Days 27–32</span>
+        </div>
+        <div class="phase-body">
+          <ul class="task-list">
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Deploy FastAPI to Railway with managed Postgres + Redis</div>
+                <div class="task-desc">Create <code>Dockerfile</code>, set environment variables in Railway dashboard,
+                  run Alembic migrations on first deploy. Point a custom domain (e.g. <code>api.synergy.ai</code>).
+                </div>
+                <div class="task-tags"><span class="task-tag tag-infra">Infra</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Build remaining game widgets: SequencingGame + ImitationGame</div>
+                <div class="task-desc">Adds variety for the demo. Sequencing uses reorderable lists. Imitation uses a
+                  timed light-up sequence pattern.</div>
+                <div class="task-tags"><span class="task-tag tag-flutter">Flutter</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Build progress dashboard in Flutter with charts</div>
+                <div class="task-desc">Use <code>fl_chart</code> package. Show weekly activity streaks, domain score
+                  trends, and goal completion rate. Data from <code>GET /sessions/{child_id}/progress</code>.</div>
+                <div class="task-tags"><span class="task-tag tag-flutter">Flutter</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Add Lottie celebration animations and haptic feedback</div>
+                <div class="task-desc">Celebration config from server specifies animation type (<code>"confetti"</code>,
+                  <code>"stars"</code>, <code>"bounce"</code>). Client maps these to Lottie files. Haptic feedback on
+                  correct answers.
+                </div>
+                <div class="task-tags"><span class="task-tag tag-flutter">Flutter</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Security audit + HIPAA-adjacent hardening</div>
+                <div class="task-desc">Encrypt <code>diagnosis_notes</code> at rest, add rate limiting to auth endpoints
+                  (slowapi), verify all child data queries have <code>parent_id</code> filters, add request logging with
+                  PII scrubbing.</div>
+                <div class="task-tags"><span class="task-tag tag-infra">Infra</span><span
+                    class="task-tag tag-api">FastAPI</span></div>
+              </div>
+            </li>
+            <li class="task-item">
+              <div class="task-check"></div>
+              <div class="task-content">
+                <div class="task-title">Build a demo seed script for investor presentations</div>
+                <div class="task-desc">A single <code>python scripts/seed_demo.py</code> command that creates a demo
+                  parent account, two children with goals, and 10 sessions of history. Makes the app look lived-in for
+                  demos.</div>
+                <div class="task-tags"><span class="task-tag tag-api">FastAPI</span><span
+                    class="task-tag tag-db">Database</span></div>
+              </div>
+            </li>
+          </ul>
+          <div class="callout callout-tip" style="margin-top:20px;">
+            <div class="callout-icon">✅</div>
+            <div class="callout-body"><strong>Phase 5 milestone:</strong> Live app deployed, demo account seeded,
+              progress charts populated, all 4 game types working. Investor-demo ready. Full SDUI loop proven end-to-end
+              with real AI-generated activities.</div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- FOOTER -->
+    <div
+      style="border-top:1px solid var(--border);padding-top:32px;margin-top:64px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;">
+      <div style="font-size:12px;color:var(--muted);">Synergy Technical Specification v1.0 · FastAPI + Flutter + SDUI
+      </div>
+      <div style="font-size:12px;color:var(--muted);font-family:'JetBrains Mono',monospace;">5 phases · ~32 days to
+        investor-ready MVP</div>
+    </div>
+
+  </main>
+</body>
+
+</html>
