@@ -32,9 +32,9 @@ def get_fallback_activity() -> ActivityPayload:
                     difficulty="easy",
                     data={
                         "pairs": [
-                            {"id": "apple", "image_url": "https://example.com/apple.png", "label": "Apple"},
-                            {"id": "banana", "image_url": "https://example.com/banana.png", "label": "Banana"},
-                            {"id": "orange", "image_url": "https://example.com/orange.png", "label": "Orange"}
+                            {"id": "apple", "image_url": "https://localhost:8000/assets/apple", "label": "Apple"},
+                            {"id": "banana", "image_url": "https://localhost:8000/assets/banana", "label": "Banana"},
+                            {"id": "orange", "image_url": "https://localhost:8000/assets/orange", "label": "Orange"}
                         ]
                     }
                 )

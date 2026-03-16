@@ -67,6 +67,7 @@ async def get_next_activity(
             recent_sessions=recent_sessions
         )
     except Exception as e:
+        print(e)
         # Fallback to static template on API failure
         # In a real app we might still cache this temporarily to prevent hammering the failing API
         activity_payload = get_fallback_activity()
