@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -25,6 +26,7 @@ router = APIRouter()
 async def get_next_activity(
     request: Request,
     child_id: int,
+    game_type: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     redis_client: redis.Redis = Depends(get_redis_client)
@@ -64,7 +66,8 @@ async def get_next_activity(
         activity_payload = await generate_activity(
             child=child, 
             goals=child.goals, 
-            recent_sessions=recent_sessions
+            recent_sessions=recent_sessions,
+            game_type=game_type
         )
     except Exception as e:
         print(e)

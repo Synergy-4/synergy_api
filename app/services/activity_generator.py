@@ -14,7 +14,12 @@ logger = logging.getLogger(__name__)
 # Initialize GenAI Client
 client = genai.Client(api_key=settings.GEMINI_API_KEY) if settings.GEMINI_API_KEY else None
 
-async def generate_activity(child: Child, goals: List[Goal], recent_sessions: List[Session]) -> ActivityPayload:
+async def generate_activity(
+    child: Child, 
+    goals: List[Goal], 
+    recent_sessions: List[Session],
+    game_type: Optional[str] = None
+) -> ActivityPayload:
     if not client:
         raise ValueError("GEMINI_API_KEY is not configured")
 
@@ -31,6 +36,7 @@ async def generate_activity(child: Child, goals: List[Goal], recent_sessions: Li
             for g in goals
         ],
         "session_history": [],
+        "requested_game_type": game_type,
         "asset_base_url": "http://localhost:8000/api/v1/assets/"
     }
 
@@ -571,7 +577,7 @@ Your response must be exactly this structure with no additional fields and no mi
       "description": null,
       "voiceover_text": null,
       "game_config": {
-        "game_type": string,
+        "game_type": requested_game_type,
         "difficulty": "easy" | "medium" | "hard",
         "time_limit_seconds": number | null,
         "prompt_level": number,
@@ -612,7 +618,6 @@ Output the JSON object now."""
             )
         )
 
-        print(response.text)
         
         # Parse the JSON response directly into the Pydantic model
         return ActivityPayload.model_validate_json(response.text)
