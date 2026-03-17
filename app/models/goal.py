@@ -13,6 +13,7 @@ class Goal(Base):
     description = Column(String, nullable=False)
     priority = Column(Integer, default=1) # 1 is highest priority
     is_active = Column(Boolean, default=True)
+    is_deleted = Column(Boolean, default=False)
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

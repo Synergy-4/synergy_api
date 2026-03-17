@@ -30,7 +30,7 @@ async def get_current_user(
     
     result = await db.execute(select(User).filter(User.id == int(user_id)))
     user = result.scalars().first()
-    if user is None:
+    if user is None or user.is_deleted:
         raise credentials_exception
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")

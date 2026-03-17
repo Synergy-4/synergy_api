@@ -23,11 +23,19 @@ async def generate_activity(
     if not client:
         raise ValueError("GEMINI_API_KEY is not configured")
 
+    # Calculate age from DOB
+    from datetime import datetime
+    today = datetime.now().date()
+    age = today.year - child.date_of_birth.year - (
+        (today.month, today.day) < (child.date_of_birth.month, child.date_of_birth.day)
+    )
+
     # Build context for Gemini
     child_context = {
         "child": {
+            "id": str(child.id),
             "name": child.name,
-            "age_years": child.age_in_years,
+            "age_years": age,
             "interests": child.interests,
             "diagnosis_notes": child.diagnosis_notes
         },

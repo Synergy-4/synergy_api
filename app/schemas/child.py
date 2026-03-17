@@ -1,19 +1,22 @@
 from typing import Optional, List
+from datetime import date
 from pydantic import BaseModel
 from app.schemas.goal import Goal
 
 class ChildBase(BaseModel):
     name: str
-    age_in_years: int
+    date_of_birth: date
     interests: Optional[List[str]] = []
     diagnosis_notes: Optional[str] = None
 
 class ChildCreate(ChildBase):
     pass
 
-class ChildUpdate(ChildBase):
+class ChildUpdate(BaseModel):
     name: Optional[str] = None
-    age_in_years: Optional[int] = None
+    date_of_birth: Optional[date] = None
+    interests: Optional[List[str]] = None
+    diagnosis_notes: Optional[str] = None
 
 class ChildInDBBase(ChildBase):
     id: int
