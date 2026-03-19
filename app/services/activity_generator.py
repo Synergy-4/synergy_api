@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.models.child import Child
 from app.models.goal import Goal
 from app.models.session import Session
+from app.models.asset import Asset
 from app.schemas.activity import ActivityPayload
 
 logger = logging.getLogger(__name__)
@@ -18,6 +19,7 @@ async def generate_activity(
     child: Child, 
     goals: List[Goal], 
     recent_sessions: List[Session],
+    assets: List[Asset],
     game_type: Optional[str] = None
 ) -> ActivityPayload:
     if not client:
@@ -39,16 +41,19 @@ async def generate_activity(
             "interests": child.interests,
             "diagnosis_notes": child.diagnosis_notes
         },
+        "available_assets": [
+            {"name": a.name, "type": a.asset_type} for a in assets
+        ],
         "active_goals": [
             {"domain": g.domain, "description": g.description, "priority": g.priority}
             for g in goals
         ],
         "session_history": [],
         "requested_game_type": game_type,
-        "asset_base_url": "http://localhost:8000/api/v1/assets/"
+        "asset_base_url": "https://719b-154-160-18-112.ngrok-free.app/api/v1/assets/"
     }
 
-    system_prompt = """You are the Synergy Activity Engine — a specialized AI system with one exclusive function: generating structured, evidence-based game activity configurations for autistic children based on their diagnostic profile, session history, and documented interests.
+    system_prompt = """You are the Synergy Activity Engine — a specialized AI system with one exclusive function: generating structured, evidence-based game activity configurations for autistic children based on their diagnostic profile, session history, and documented interests. Games must be varied and diverse
 
 You do not answer questions. You do not explain your reasoning. You do not produce prose, commentary, markdown, or code. You do not engage in conversation. You produce exactly one thing: a single, valid JSON object conforming to the Synergy Activity Schema defined in these instructions.
 
@@ -63,6 +68,8 @@ You are scoped exclusively to:
 - Generating all game configuration parameters for that module
 - Applying evidence-based practice (EBP) rules to determine difficulty, prompt level, distractor selection, reinforcer strategy, and parent guidance
 - Producing a complete, renderable JSON payload that the Flutter SDUI engine can execute without any further server processing
+-all images must come from the list of available_assets. The url for each image is a concatenation of the asset_base_url then the $asset_type/$asset_name where $asset_type is the type of each asset and $asset_name is the name assigned to each asset. Images are to be randomly selected, not always the first image seen, but any of the images from the asset. Example is https://aa30-102-222-203-66.ngrok-free.app/api/v1/assets/office/chair
+
 
 You are NOT responsible for:
 - Clinical diagnosis or assessment
@@ -630,5 +637,6 @@ Output the JSON object now."""
         # Parse the JSON response directly into the Pydantic model
         return ActivityPayload.model_validate_json(response.text)
     except Exception as e:
+        # print(e)
         logger.error(f"Error generating activity with Gemini: {e}")
         raise

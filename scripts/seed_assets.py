@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from app.core.database import AsyncSessionLocal
 from app.models.asset import Asset
 
-FRUIT_ASSETS_DIR = "app/assets/fruits"
+FRUIT_ASSETS_DIR = "app/assets/vehicles"
 
 async def seed_fruits():
     async with AsyncSessionLocal() as session:
@@ -31,7 +31,7 @@ async def seed_fruits():
                 new_asset = Asset(
                     name=name,
                     path=path,
-                    asset_type="fruit"
+                    asset_type="vehicles"
                 )
                 session.add(new_asset)
             else:

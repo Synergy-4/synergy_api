@@ -38,6 +38,7 @@ class StepConfig(BaseModel):
 
 class ActivityPayload(BaseModel):
     version: str = "1.0.0"
+    activity_id: Optional[int] = None
     theme: ThemeConfig
     steps: List[StepConfig]
 
