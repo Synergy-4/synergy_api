@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy import text
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
@@ -56,13 +57,11 @@ async def get_next_activity(
     #         pass # Fall through to generate
             
     # 2. Load context (goals, recent sessions)
-    recent_sessions_result = await db.execute(
-        select(Session)
-        .filter(Session.child_id == child_id)
-        .order_by(Session.created_at.desc())
-        .limit(5)
-    )
-    recent_sessions = recent_sessions_result.scalars().all()
+    stmt = text("select * from sessions join activities on sessions.activity_id = activities.id where sessions.child_id = :child_id order by sessions.created_at desc limit 5")
+    recent_sessions_result = await db.execute(stmt, {"child_id": child_id})
+
+    recent_sessions = recent_sessions_result.all()
+    print(recent_sessions)
     
     # 3. Load available assets for AI context
     assets_result = await db.execute(select(Asset))
@@ -110,8 +109,6 @@ async def get_next_activity(
     )
     db.add(db_activity)
     await db.commit()
-
-    print(db_activity.id)
     
     await db.refresh(db_activity)
     validated_payload.activity_id = db_activity.id

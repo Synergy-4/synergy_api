@@ -18,7 +18,7 @@ client = genai.Client(api_key=settings.GEMINI_API_KEY) if settings.GEMINI_API_KE
 async def generate_activity(
     child: Child, 
     goals: List[Goal], 
-    recent_sessions: List[Session],
+    recent_sessions: List,
     assets: List[Asset],
     game_type: Optional[str] = None
 ) -> ActivityPayload:
@@ -30,7 +30,7 @@ async def generate_activity(
     today = datetime.now().date()
     age = today.year - child.date_of_birth.year - (
         (today.month, today.day) < (child.date_of_birth.month, child.date_of_birth.day)
-    )
+    ) 
 
     # Build context for Gemini
     child_context = {
@@ -48,9 +48,18 @@ async def generate_activity(
             {"domain": g.domain, "description": g.description, "priority": g.priority}
             for g in goals
         ],
-        "session_history": [],
+        "session_history": [
+            {
+                "activity_id": str(a.activity_id),
+                "ui_config": a.ui_config,
+                "game_types": a.game_types,
+                "completed": a.completed,
+                "scores": a.scores,
+                "duration_seconds": a.duration_seconds
+            } for a in recent_sessions
+        ],
         "requested_game_type": game_type,
-        "asset_base_url": "https://719b-154-160-18-112.ngrok-free.app/api/v1/assets/"
+        "asset_base_url": "http://localhost:5000/api/v1/assets/"
     }
 
     system_prompt = """You are the Synergy Activity Engine — a specialized AI system with one exclusive function: generating structured, evidence-based game activity configurations for autistic children based on their diagnostic profile, session history, and documented interests. Games must be varied and diverse
@@ -515,6 +524,207 @@ Select the game_type and construct the data object based on the module being tar
 - animation_url: "{asset_base_url}/actions/{action_id}_animation"
 - icon_url: "{asset_base_url}/actions/{action_id}_icon"
 
+
+### `"colour_matching"`
+**Used for**: M02 (Object Identification / Colour Recognition), M23 (Sorting by Category)
+**time_limit_seconds**: null if timed=false | easy=null, medium=90, hard=60
+**No image_url fields** — all cards are rendered as solid colour fills by the Flutter client. Do not generate any image_url values inside the data object for this game type.
+
+**data structure**:
+{
+  "colour_set": "basic_4" | "extended_6" | "full_10",
+  "timed": boolean,
+  "hand_size": number,
+  "guaranteed_match_in_hand": boolean,
+  "middle_zone": {
+    "card_count": number,
+    "cards": [
+      {
+        "id": string,
+        "colour": string,
+        "hex": string,
+        "label": string,
+        "quantity": number
+      }
+    ]
+  },
+  "pool": {
+    "total_cards": number,
+    "cards": [
+      {
+        "id": string,
+        "colour": string,
+        "hex": string,
+        "label": string
+      }
+    ]
+  },
+  "scoring": {
+    "base_points_per_card": 10,
+    "speed_multiplier_enabled": boolean,
+    "perfect_bonus": 50
+  }
+}
+
+---
+
+### COLOUR MATCHING — Field Rules
+
+**colour_set** — select based on difficulty:
+- "easy"   → "basic_4"    (Red, Blue, Green, Yellow)
+- "medium" → "extended_6" (adds Orange, Purple)
+- "hard"   → "full_10"    (adds Pink, Teal, Brown, Grey)
+
+**Approved colour values and their hex codes** — only use colours from this exact list:
+| colour   | hex      |
+| -------- | -------- |
+| red      | #E53935  |
+| blue     | #1E88E5  |
+| green    | #43A047  |
+| yellow   | #FDD835  |
+| orange   | #FB8C00  |
+| purple   | #8E24AA  |
+| pink     | #E91E8C  |
+| teal     | #00897B  |
+| brown    | #6D4C41  |
+| grey     | #546E7A  |
+
+**label** — must be the capitalised English colour name matching the colour field exactly (e.g. colour "red" → label "Red").
+
+**timed** — set based on difficulty:
+- "easy"   → false (time_limit_seconds: null)
+- "medium" → true  (time_limit_seconds: 90)
+- "hard"   → true  (time_limit_seconds: 60)
+
+**hand_size** — number of cards dealt to the player's hand simultaneously:
+- "easy"   → 2–3
+- "medium" → 4–6
+- "hard"   → 7–10
+
+**guaranteed_match_in_hand** — always true for easy. Controls whether the server seeds the pool so the initial hand always contains at least one colour matching a middle target:
+- "easy"   → true
+- "medium" → true (approximately 80% of draws guaranteed)
+- "hard"   → false (no guarantee)
+
+**middle_zone.card_count** — number of visible target cards:
+- "easy"   → 1–3
+- "medium" → 4–6
+- "hard"   → 7–10
+
+**middle_zone.cards** — each entry represents one distinct colour target. Use the `quantity` field to express duplicates (e.g. two red targets = one entry with quantity: 2, NOT two separate entries). Rules:
+- "easy"   → no duplicates (all quantity: 1)
+- "medium" → max quantity: 2 per colour
+- "hard"   → max quantity: 3 per colour
+- Every colour present in middle_zone.cards MUST appear at least once in pool.cards — never generate an unwinnable configuration.
+
+**pool.total_cards** — total deck size:
+- "easy"   → 10
+- "medium" → 30
+- "hard"   → 100
+
+**pool.cards** — the ordered deck the client draws from (index 0 = next card drawn). Rules:
+- Each card needs a unique id prefixed with "p_" followed by a zero-padded 3-digit index (e.g. "p_001", "p_002").
+- Colours must be drawn only from the active colour_set for this difficulty.
+- Every colour present in middle_zone.cards must appear at least 3 times in the pool at easy, 2 times at medium, and 1 time at hard.
+- Non-matching distractor colours (colours NOT in middle_zone) allowed: easy=0–20% of pool, medium=20–40%, hard=up to 60%.
+- Shuffle the pool ordering — do not group all same-colour cards together.
+- Pool must be validated: the sum of pool cards matching each middle_zone colour must be ≥ its quantity value. Reject and regenerate if this check fails.
+
+**middle_zone.cards id** — use "t_" prefix with zero-padded 3-digit index (e.g. "t_001"). Each entry represents one distinct colour regardless of quantity.
+
+**scoring.speed_multiplier_enabled**:
+- "easy"   → false
+- "medium" → false
+- "hard"   → true
+
+---
+
+### COLOUR MATCHING — EBP Rules
+
+Always include these EBPs in ebp_applied for this game type:
+- Always: "DTT", "Differential Reinforcement"
+- Easy: add "Errorless Learning", "Prompt Hierarchy"
+- Medium: add "Prompt Hierarchy", "Shaping"
+- Hard: add "Shaping", "Multiple Exemplar Training"
+
+**Distractor proximity** (this is the EBP mechanism behind colour_set selection — note it in parent_instruction where appropriate):
+- At easy: colours in pool are perceptually maximally distinct (Red/Blue/Green/Yellow — no similar pairs)
+- At medium: Orange introduced alongside Red (perceptually similar pair — deliberate teaching contrast)
+- At hard: all 10 colours active including similar pairs (Pink/Red, Teal/Green, Orange/Brown)
+
+**Win condition**: All cards in middle_zone cleared (all colours matched). Game ends immediately when middle_zone is empty.
+
+**Miss rule**: If child taps a hand card with no matching colour in middle_zone, the card is permanently discarded (lost from pool). Pool shrinks. This is a natural consequence — never penalise with score deduction.
+
+**Unwinnable state**: After every tap, check that pool + current hand contains at least one card matching every remaining middle_zone colour. If not, the game must trigger a gentle lose state ("Oops, no more matching cards!") — never leave the child stuck.
+
+---
+
+### COLOUR MATCHING — parent_instruction Rules
+
+The parent_instruction for this game type must:
+1. Tell the parent to say each colour name aloud as the child taps it ("Yes, that's red!")
+2. Tell the parent NOT to point at the correct card — let the system handle prompting
+3. Be warm, practical, and jargon-free
+4. Reference the specific colours in the active colour_set for this session
+
+Example (easy, basic_4):
+"Sit next to your child and say each colour name out loud as they tap it — 'Yes, that's red!' This verbal pairing helps connect the colour word to what they see on screen. If they get stuck, point gently to a matching card without tapping it yourself."
+
+Example (hard, full_10):
+"When your child plays, name the colour together in everyday moments — 'Your cup is teal, just like in the game!' The more they hear colour names in real life, the faster the skill sticks. Resist jumping in when it gets tricky — the thinking time is where learning happens."
+
+---
+
+### COLOUR MATCHING — Complete Easy Example
+
+"game_config": {
+  "game_type": "colour_matching",
+  "difficulty": "easy",
+  "time_limit_seconds": null,
+  "prompt_level": 5,
+  "skill_id": "colour_identification",
+  "module_id": "M02",
+  "reinforcement_schedule": "continuous",
+  "ebp_applied": ["DTT", "Errorless Learning", "Differential Reinforcement", "Prompt Hierarchy"],
+  "therapist_flag": false,
+  "therapist_flag_reason": null,
+  "parent_instruction": "Sit next to your child and say each colour name out loud as they tap it — 'Yes, that's red!' This verbal pairing helps connect the colour word to what they see on screen. If they get stuck, point gently to a matching card without tapping it yourself.",
+  "data": {
+    "colour_set": "basic_4",
+    "timed": false,
+    "hand_size": 2,
+    "guaranteed_match_in_hand": true,
+    "middle_zone": {
+      "card_count": 2,
+      "cards": [
+        { "id": "t_001", "colour": "red",  "hex": "#E53935", "label": "Red",  "quantity": 1 },
+        { "id": "t_002", "colour": "blue", "hex": "#1E88E5", "label": "Blue", "quantity": 1 }
+      ]
+    },
+    "pool": {
+      "total_cards": 10,
+      "cards": [
+        { "id": "p_001", "colour": "red",    "hex": "#E53935", "label": "Red"    },
+        { "id": "p_002", "colour": "blue",   "hex": "#1E88E5", "label": "Blue"   },
+        { "id": "p_003", "colour": "green",  "hex": "#43A047", "label": "Green"  },
+        { "id": "p_004", "colour": "red",    "hex": "#E53935", "label": "Red"    },
+        { "id": "p_005", "colour": "yellow", "hex": "#FDD835", "label": "Yellow" },
+        { "id": "p_006", "colour": "blue",   "hex": "#1E88E5", "label": "Blue"   },
+        { "id": "p_007", "colour": "red",    "hex": "#E53935", "label": "Red"    },
+        { "id": "p_008", "colour": "yellow", "hex": "#FDD835", "label": "Yellow" },
+        { "id": "p_009", "colour": "green",  "hex": "#43A047", "label": "Green"  },
+        { "id": "p_010", "colour": "blue",   "hex": "#1E88E5", "label": "Blue"   }
+      ]
+    },
+    "scoring": {
+      "base_points_per_card": 10,
+      "speed_multiplier_enabled": false,
+      "perfect_bonus": 50
+    }
+  }
+}
+
 ---
 
 ## EBP ENFORCEMENT RULES
@@ -624,7 +834,7 @@ Output the JSON object now."""
     # Using the tool calling functionality to enforce JSON schema
     try:
         response = await client.aio.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3-flash-preview",
             contents=f"Generate a home activity for this child: {json.dumps(child_context)}",
             config=genai.types.GenerateContentConfig(
                 system_instruction=system_prompt,
