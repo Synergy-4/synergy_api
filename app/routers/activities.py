@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy import text
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
@@ -15,9 +16,12 @@ from app.models.child import Child
 from app.models.activity import Activity
 from app.models.goal import Goal
 from app.models.session import Session
+from app.models.asset import Asset
 from app.schemas.activity import ActivityPayload, ThemeConfig, FontConfig, GameConfig, StepConfig
 from app.services.activity_generator import generate_activity
 from app.services.activity_validator import validate_and_fallback, get_fallback_activity
+
+import random
 
 router = APIRouter()
 
@@ -43,30 +47,34 @@ async def get_next_activity(
         
     cache_key = f"activity:next:{child_id}"
     
-    # 1. Check Redis Cache
-    cached_payload = await redis_client.get(cache_key)
-    if cached_payload:
-        try:
-            payload_dict = json.loads(cached_payload)
-            return validate_and_fallback(payload_dict)
-        except Exception:
-            pass # Fall through to generate
+    # # 1. Check Redis Cache
+    # cached_payload = await redis_client.get(cache_key)
+    # if cached_payload:
+    #     try:
+    #         payload_dict = json.loads(cached_payload)
+    #         return validate_and_fallback(payload_dict)
+    #     except Exception:
+    #         pass # Fall through to generate
             
     # 2. Load context (goals, recent sessions)
-    recent_sessions_result = await db.execute(
-        select(Session)
-        .filter(Session.child_id == child_id)
-        .order_by(Session.created_at.desc())
-        .limit(5)
-    )
-    recent_sessions = recent_sessions_result.scalars().all()
+    stmt = text("select * from sessions join activities on sessions.activity_id = activities.id where sessions.child_id = :child_id order by sessions.created_at desc limit 5")
+    recent_sessions_result = await db.execute(stmt, {"child_id": child_id})
+
+    recent_sessions = recent_sessions_result.all()
+    print(recent_sessions)
     
-    # 3. Generate AI Activity
+    # 3. Load available assets for AI context
+    assets_result = await db.execute(select(Asset))
+    assets = assets_result.scalars().all()
+    random.shuffle(assets)
+    
+    # 4. Generate AI Activity
     try:
         activity_payload = await generate_activity(
             child=child, 
             goals=child.goals, 
             recent_sessions=recent_sessions,
+            assets=assets,
             game_type=game_type
         )
     except Exception as e:
@@ -87,14 +95,22 @@ async def get_next_activity(
         json.dumps(validated_payload.model_dump())
     )
     
+    game_types = list({
+        step.game_config.game_type
+        for step in validated_payload.steps
+        if step.game_config and step.game_config.game_type
+    })
     db_activity = Activity(
         child_id=child_id,
         ui_config=validated_payload.model_dump(),
         ai_generated=True,
         theme_id="dynamic_ai",
-        game_types=[] # we could extract game types from the payload steps
+        game_types=game_types
     )
     db.add(db_activity)
     await db.commit()
     
+    await db.refresh(db_activity)
+    validated_payload.activity_id = db_activity.id
+
     return validated_payload

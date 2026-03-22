@@ -12,7 +12,7 @@ from app.schemas.session import SessionCreate, Session as SessionSchema
 
 router = APIRouter()
 
-@router.post("/", response_model=SessionSchema, status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_session(
     session_in: SessionCreate,
     db: AsyncSession = Depends(get_db),
@@ -30,7 +30,7 @@ async def create_session(
     await db.refresh(session)
     return session
 
-@router.get("/{child_id}/history", response_model=List[SessionSchema])
+@router.get("/{child_id}/history")
 async def get_session_history(
     child_id: int,
     skip: int = 0,
