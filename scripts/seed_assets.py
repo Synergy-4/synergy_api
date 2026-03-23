@@ -45,6 +45,9 @@ async def seed_assets():
                     print(f"  + Adding: {asset_type}/{name}")
                     session.add(Asset(name=name, path=path, asset_type=asset_type))
                     total_added += 1
+                elif existing.path != path:
+                    print(f"  ~ Updating path: {asset_type}/{name} ({existing.path!r} -> {path!r})")
+                    existing.path = path
                 else:
                     print(f"  ~ Skipping (exists): {asset_type}/{name}")
 
