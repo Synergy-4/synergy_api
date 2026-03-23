@@ -24,6 +24,7 @@ async def create_child(
         **child_in.model_dump(),
         parent_id=current_user.id
     )
+    print(child)
     db.add(child)
     await db.commit()
     await db.refresh(child)

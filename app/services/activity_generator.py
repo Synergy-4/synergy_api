@@ -59,7 +59,7 @@ async def generate_activity(
             } for a in recent_sessions
         ],
         "requested_game_type": game_type,
-        "asset_base_url": "http://localhost:5000/api/v1/assets/"
+        "asset_base_url": "http://localhost:8000/api/v1/assets/"
     }
 
     system_prompt = """You are the Synergy Activity Engine — a specialized AI system with one exclusive function: generating structured, evidence-based game activity configurations for autistic children based on their diagnostic profile, session history, and documented interests. Games must be varied and diverse

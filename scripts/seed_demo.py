@@ -1,5 +1,6 @@
 import asyncio
 import json
+from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import AsyncSessionLocal, Base, engine
 from app.models.user import User
@@ -23,14 +24,14 @@ async def seed_data():
         child1 = Child(
             parent_id=demo_user.id,
             name="Leo",
-            age_in_years=5,
+            date_of_birth=date(2021, 5, 15),
             interests=["blocks", "trains", "music"],
             diagnosis_notes="Level 1 ASD, slight speech delay"
         )
         child2 = Child(
             parent_id=demo_user.id,
             name="Mia",
-            age_in_years=7,
+            date_of_birth=date(2019, 5, 15),
             interests=["dinosaurs", "drawing", "puzzles"],
             diagnosis_notes="ADHD, sensory processing differences"
         )
