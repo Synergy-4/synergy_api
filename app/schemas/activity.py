@@ -25,6 +25,8 @@ class GameConfig(BaseModel):
     game_type: str # "matching", "sorting", "tracing"
     difficulty: str # "easy", "medium", "hard"
     time_limit_seconds: Optional[int] = None
+    parent_instruction: Optional[str] = None
+    parent_instruction_audio_url: Optional[str] = None
     data: Dict[str, Any] # Game-specific configuration, e.g., pairs for matching
 
 class StepConfig(BaseModel):
@@ -33,6 +35,7 @@ class StepConfig(BaseModel):
     title: str
     description: Optional[str] = None
     voiceover_text: Optional[str] = None
+    voiceover_audio_url: Optional[str] = None
     game_config: Optional[GameConfig] = None
     lottie_url: Optional[str] = None # For reward steps
 

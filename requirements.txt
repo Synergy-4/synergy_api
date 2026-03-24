@@ -14,3 +14,7 @@ httpx
 email-validator
 python-multipart
 slowapi
+pocket-tts
+scipy
+pydub
+boto3

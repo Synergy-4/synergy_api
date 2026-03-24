@@ -26,7 +26,7 @@ import random
 router = APIRouter()
 
 @router.get("/next/{child_id}", response_model=ActivityPayload)
-@limiter.limit("5/minute")
+@limiter.limit("12/minute")
 async def get_next_activity(
     request: Request,
     child_id: int,
@@ -45,23 +45,22 @@ async def get_next_activity(
     if not child:
         raise HTTPException(status_code=404, detail="Child not found")
         
-    cache_key = f"activity:next:{child_id}"
+    cache_key = f"activity:next:{child_id}:{game_type}"
     
-    # # 1. Check Redis Cache
-    # cached_payload = await redis_client.get(cache_key)
-    # if cached_payload:
-    #     try:
-    #         payload_dict = json.loads(cached_payload)
-    #         return validate_and_fallback(payload_dict)
-    #     except Exception:
-    #         pass # Fall through to generate
+    # 1. Check Redis Cache
+    cached_payload = await redis_client.get(cache_key)
+    if cached_payload:
+        try:
+            payload_dict = json.loads(cached_payload)
+            return ActivityPayload(**payload_dict)
+        except Exception:
+            pass # Fall through to generate
             
     # 2. Load context (goals, recent sessions)
     stmt = text("select * from sessions join activities on sessions.activity_id = activities.id where sessions.child_id = :child_id order by sessions.created_at desc limit 5")
     recent_sessions_result = await db.execute(stmt, {"child_id": child_id})
 
     recent_sessions = recent_sessions_result.all()
-    print(recent_sessions)
     
     # 3. Load available assets for AI context
     assets_result = await db.execute(select(Asset))
@@ -79,30 +78,31 @@ async def get_next_activity(
         )
     except Exception as e:
         print(e)
-        # Fallback to static template on API failure
-        # In a real app we might still cache this temporarily to prevent hammering the failing API
+        app.logger.error("Activity generation failed, using fallback")
         activity_payload = get_fallback_activity()
         
-    # Validation step to ensure the returned tool_use payload matches the API schema
-    # Pydantic is already applied inside `generate_activity` structurally, but this serves as a final check
-    # if we wanted to allow modifications
     validated_payload = validate_and_fallback(activity_payload.model_dump())
 
-    # 4. Cache and Store
+    # 5. Inject audio URLs — all TTS generation happens here
+    from app.services.audio_injection_service import inject_audio_urls
+    payload_dict = await inject_audio_urls(validated_payload.model_dump())
+
+    # 6. Cache and Store
     await redis_client.setex(
         cache_key,
         14400, # Cache for 4 hours
-        json.dumps(validated_payload.model_dump())
+        json.dumps(payload_dict)
     )
     
     game_types = list({
-        step.game_config.game_type
-        for step in validated_payload.steps
-        if step.game_config and step.game_config.game_type
+        step.get("game_config", {}).get("game_type")
+        for step in payload_dict.get("steps", [])
+        if step.get("game_config") and step.get("game_config").get("game_type")
     })
+    
     db_activity = Activity(
         child_id=child_id,
-        ui_config=validated_payload.model_dump(),
+        ui_config=payload_dict,
         ai_generated=True,
         theme_id="dynamic_ai",
         game_types=game_types
@@ -111,6 +111,6 @@ async def get_next_activity(
     await db.commit()
     
     await db.refresh(db_activity)
-    validated_payload.activity_id = db_activity.id
+    payload_dict["activity_id"] = db_activity.id
 
-    return validated_payload
+    return ActivityPayload(**payload_dict)
