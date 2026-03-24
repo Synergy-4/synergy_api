@@ -1,0 +1,298 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# app/core/storage.py
+#
+# Storage backend abstraction for TTS audio files.
+# Supports two backends: local filesystem and Cloudflare R2 (S3-compatible).
+# Backend is selected via AUDIO_STORAGE_BACKEND env var: "local" | "r2"
+#
+# Local backend: files written to AUDIO_LOCAL_DIR, served via FastAPI static mount
+# R2 backend: files uploaded to Cloudflare R2, served via public CDN URL
+# ─────────────────────────────────────────────────────────────────────────────
+
+import abc
+import asyncio
+import os
+from pathlib import Path
+
+import boto3
+from botocore.exceptions import ClientError
+
+from app.core.config import settings
+
+
+# ── Abstract base ─────────────────────────────────────────────────────────────
+
+class AudioStorageBackend(abc.ABC):
+"""All storage backends implement this interface."""
+
+@abc.abstractmethod
+async def exists(self, path: str) -> bool:
+"""Return True if a file at this path already exists."""
+
+@abc.abstractmethod
+async def upload(self, data: bytes, path: str, content_type: str) -> str:
+"""
+Store audio bytes at `path`.
+Returns the full public URL the Flutter client can fetch.
+"""
+
+
+# ── Local filesystem backend ──────────────────────────────────────────────────
+
+class LocalAudioBackend(AudioStorageBackend):
+"""
+Writes MP3 files to a local folder and serves them via FastAPI's
+StaticFiles mount at /audio.
+
+Directory structure mirrors R2:
+{AUDIO_LOCAL_DIR}/audio/{hash[:2]}/{hash}.mp3
+
+Public URL:
+{AUDIO_LOCAL_BASE_URL}/audio/{hash[:2]}/{hash}.mp3
+e.g. http://localhost:8000/audio/3f/3fa8bc92.mp3
+"""
+
+def __init__(self):
+self.base_dir = Path(settings.AUDIO_LOCAL_DIR) # e.g. "./audio_files"
+self.base_url = settings.AUDIO_LOCAL_BASE_URL.rstrip("/")
+self.base_dir.mkdir(parents=True, exist_ok=True)
+
+def _full_path(self, path: str) -> Path:
+return self.base_dir / path
+
+async def exists(self, path: str) -> bool:
+loop = asyncio.get_event_loop()
+return await loop.run_in_executor(None, self._full_path(path).exists)
+
+async def upload(self, data: bytes, path: str, content_type: str) -> str:
+loop = asyncio.get_event_loop()
+await loop.run_in_executor(None, self._write_file, path, data)
+return f"{self.base_url}/{path}"
+
+def _write_file(self, path: str, data: bytes) -> None:
+full_path = self._full_path(path)
+full_path.parent.mkdir(parents=True, exist_ok=True)
+full_path.write_bytes(data)
+
+
+# ── Cloudflare R2 / S3 backend ────────────────────────────────────────────────
+
+class R2AudioBackend(AudioStorageBackend):
+"""
+Uploads MP3 files to Cloudflare R2 (S3-compatible API).
+Files are immutably content-addressed and served via CDN.
+
+Public URL:
+{R2_PUBLIC_URL}/audio/{hash[:2]}/{hash}.mp3
+e.g. https://cdn.synergy.ai/audio/3f/3fa8bc92.mp3
+"""
+
+def __init__(self):
+self.client = boto3.client(
+"s3",
+endpoint_url=settings.R2_ENDPOINT_URL,
+aws_access_key_id=settings.R2_ACCESS_KEY_ID,
+aws_secret_access_key=settings.R2_SECRET_ACCESS_KEY,
+region_name="auto",
+)
+self.bucket = settings.R2_BUCKET_NAME
+self.public_url = settings.R2_PUBLIC_URL.rstrip("/")
+
+async def exists(self, path: str) -> bool:
+loop = asyncio.get_event_loop()
+try:
+await loop.run_in_executor(
+None,
+lambda: self.client.head_object(Bucket=self.bucket, Key=path),
+)
+return True
+except ClientError:
+return False
+
+async def upload(self, data: bytes, path: str, content_type: str) -> str:
+loop = asyncio.get_event_loop()
+await loop.run_in_executor(None, self._put_object, path, data, content_type)
+return f"{self.public_url}/{path}"
+
+def _put_object(self, path: str, data: bytes, content_type: str) -> None:
+self.client.put_object(
+Bucket=self.bucket,
+Key=path,
+Body=data,
+ContentType=content_type,
+CacheControl="public, max-age=31536000, immutable",
+)
+
+
+# ── Factory — selected by AUDIO_STORAGE_BACKEND env var ──────────────────────
+
+def _make_backend() -> AudioStorageBackend:
+backend = getattr(settings, "AUDIO_STORAGE_BACKEND", "local").lower()
+if backend == "r2":
+return R2AudioBackend()
+return LocalAudioBackend() # default for dev / self-hosted
+
+
+# Module-level singleton imported by TTSService
+audio_storage: AudioStorageBackend = _make_backend()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# app/core/config.py — add these fields to your existing Settings class
+# ─────────────────────────────────────────────────────────────────────────────
+
+"""
+Add to your pydantic-settings Settings class:
+
+class Settings(BaseSettings):
+
+# --- Audio storage ---
+AUDIO_STORAGE_BACKEND: str = "local" # "local" | "r2"
+
+# Local backend
+AUDIO_LOCAL_DIR: str = "./audio_files" # relative to project root
+AUDIO_LOCAL_BASE_URL: str = "http://localhost:8000" # base for returned URLs
+
+# R2 backend (only needed when AUDIO_STORAGE_BACKEND=r2)
+R2_ENDPOINT_URL: str = ""
+R2_ACCESS_KEY_ID: str = ""
+R2_SECRET_ACCESS_KEY: str = ""
+R2_BUCKET_NAME: str = ""
+R2_PUBLIC_URL: str = ""
+"""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# app/main.py — mount local audio directory as static files
+# ─────────────────────────────────────────────────────────────────────────────
+
+"""
+Add this to your FastAPI app setup so locally stored files are served:
+
+from fastapi.staticfiles import StaticFiles
+from app.core.config import settings
+
+# Only mount when using local storage
+if settings.AUDIO_STORAGE_BACKEND == "local":
+app.mount(
+"/audio",
+StaticFiles(directory=settings.AUDIO_LOCAL_DIR),
+name="audio",
+)
+
+With this mount, a file stored at:
+./audio_files/audio/3f/3fa8bc92.mp3
+
+is served at:
+http://localhost:8000/audio/audio/3f/3fa8bc92.mp3
+
+To avoid the double /audio/audio/ path, set AUDIO_LOCAL_DIR to "./audio_files"
+and mount at "/audio" — the path stored in R2/local is "audio/{hash[:2]}/{hash}.mp3"
+so the full URL becomes http://localhost:8000/audio/audio/3f/... which is redundant.
+
+Cleaner: store files at "{hash[:2]}/{hash}.mp3" (no "audio/" prefix in the path)
+and mount the audio_files folder at "/audio":
+
+app.mount("/audio", StaticFiles(directory="./audio_files"), name="audio")
+
+Then the URL is: http://localhost:8000/audio/3f/3fa8bc92.mp3 ✓
+And the file path is: ./audio_files/3f/3fa8bc92.mp3 ✓
+"""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# app/services/tts_service.py — updated to use storage abstraction
+# No changes to TTSService logic — only the upload call changes.
+# ─────────────────────────────────────────────────────────────────────────────
+
+"""
+Replace the R2-specific upload call:
+
+# BEFORE (R2-only)
+cdn_url = await upload_to_r2(mp3_bytes, r2_path, content_type="audio/mpeg")
+
+# AFTER (backend-agnostic)
+from app.core.storage import audio_storage
+cdn_url = await audio_storage.upload(mp3_bytes, r2_path, content_type="audio/mpeg")
+
+The TTSService.generate_audio_url() method becomes:
+
+async def generate_audio_url(self, text: str, voice: str = "child") -> str:
+cache_key = f"tts:{hashlib.sha256(f'{text}:{voice}'.encode()).hexdigest()}"
+file_hash = cache_key[4:]
+file_path = f"{file_hash[:2]}/{file_hash}.mp3" # no "audio/" prefix
+
+# 1. Redis cache hit
+cached_url = await redis_client.get(cache_key)
+if cached_url:
+return cached_url.decode()
+
+# 2. File already exists in storage (e.g. server restarted, Redis cleared)
+if await audio_storage.exists(file_path):
+base = settings.AUDIO_LOCAL_BASE_URL if settings.AUDIO_STORAGE_BACKEND == "local" else settings.R2_PUBLIC_URL
+url = f"{base.rstrip('/')}/audio/{file_path}"
+await redis_client.setex(cache_key, 2592000, url)
+return url
+
+# 3. Generate audio
+async with self._lock:
+loop = asyncio.get_event_loop()
+audio_tensor = await loop.run_in_executor(
+None, self._model.generate_audio, self._voices[voice], text
+)
+
+# 4. Convert to MP3
+mp3_bytes = await loop.run_in_executor(None, self._tensor_to_mp3, audio_tensor)
+
+# 5. Store (local or R2 — same call either way)
+url = await audio_storage.upload(mp3_bytes, file_path, "audio/mpeg")
+
+# 6. Cache URL
+await redis_client.setex(cache_key, 2592000, url)
+return url
+"""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# .env.example — environment variables for both backends
+# ─────────────────────────────────────────────────────────────────────────────
+
+"""
+# ── Audio Storage ─────────────────────────────────
+# Switch between "local" (dev/self-hosted) and "r2" (production)
+AUDIO_STORAGE_BACKEND=local
+
+# Local backend
+AUDIO_LOCAL_DIR=./audio_files
+AUDIO_LOCAL_BASE_URL=http://localhost:8000
+
+# R2 backend (fill in when AUDIO_STORAGE_BACKEND=r2)
+R2_ENDPOINT_URL=https://<account_id>.r2.cloudflarestorage.com
+  R2_ACCESS_KEY_ID=
+  R2_SECRET_ACCESS_KEY=
+  R2_BUCKET_NAME=synergy-audio
+  R2_PUBLIC_URL=https://cdn.synergy.ai
+  """
+
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Resulting folder structure (local backend)
+  # ─────────────────────────────────────────────────────────────────────────────
+
+  """
+  synergy-api/
+  ├── audio_files/ ← AUDIO_LOCAL_DIR (git-ignored)
+  │ ├── 3f/
+  │ │ └── 3fa8bc92...mp3
+  │ ├── a1/
+  │ │ └── a14de8fc...mp3
+  │ └── f4/
+  │ └── f42a9b01...mp3
+  ├── app/
+  │ ├── core/
+  │ │ ├── storage.py ← this file
+  │ │ └── config.py
+  │ └── services/
+  │ └── tts_service.py
+  └── .env
+  """
