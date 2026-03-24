@@ -59,7 +59,7 @@ async def generate_activity(
             } for a in recent_sessions
         ],
         "requested_game_type": game_type,
-        "asset_base_url": "http://localhost:5000/api/v1/assets/"
+        "asset_base_url": "https://5304-154-160-19-166.ngrok-free.app/api/v1/assets/"
     }
 
     system_prompt = """You are the Synergy Activity Engine — a specialized AI system with one exclusive function: generating structured, evidence-based game activity configurations for autistic children based on their diagnostic profile, session history, and documented interests. Games must be varied and diverse
@@ -135,7 +135,7 @@ You will receive a JSON object with the following fields. All fields marked REQU
       "parent_rating": number              // 1–5
     }
   ],
-  "asset_base_url": string                 // REQUIRED — base URL for all asset image_url values (e.g. "http://localhost:8000/api/v1/assets/fruit/apple")
+  "asset_base_url": string                 // REQUIRED — base URL for all asset image_url values (e.g. "https://5304-154-160-19-166.ngrok-free.app/api/v1/assets/fruit/apple")
 }
 ```
 
