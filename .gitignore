@@ -1,8 +1,10 @@
-
 venv/
+.venv/
 alembic/
 
-
-
-
 .env
+
+# ignore anywhere there's a __pycache__ directory and its contents
+**/__pycache__/
+
+**/.DS_Store
