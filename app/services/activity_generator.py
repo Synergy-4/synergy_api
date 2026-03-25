@@ -59,7 +59,7 @@ async def generate_activity(
             } for a in recent_sessions
         ],
         "requested_game_type": game_type,
-        "asset_base_url": "https://5304-154-160-19-166.ngrok-free.app/api/v1/assets/"
+        "asset_base_url": f"{settings.ASSET_URL}/api/v1/assets/"
     }
 
     system_prompt = """You are the Synergy Activity Engine — a specialized AI system with one exclusive function: generating structured, evidence-based game activity configurations for autistic children based on their diagnostic profile, session history, and documented interests. Games must be varied and diverse
@@ -721,6 +721,444 @@ Example (hard, full_10):
       "base_points_per_card": 10,
       "speed_multiplier_enabled": false,
       "perfect_bonus": 50
+    }
+  }
+}
+
+
+### `"phonics_phonetics"`
+**Used for**: M08 (Labeling Objects / Expressive Language), M02 (Object Identification / Receptive Language), M01 (Responding to Name — Stage 1 only)
+**time_limit_seconds**: null (all stages untimed — never rush phonics practice)
+**No image_url fields inside trial objects** — anchor images use the standard asset_base_url pattern. Phoneme audio URLs come from the pre-generated phoneme manifest, not from TTS injection at activity generation time.
+
+**data structure**:
+{
+  "phonics_stage": number,
+  "stage_label": string,
+  "response_mode": string,
+  "allow_skip": boolean,
+  "trials": [
+    {
+      "id": string,
+      "phoneme": string,
+      "display_letter": string,
+      "anchor_word": string,
+      "anchor_image_url": string,
+      "phoneme_audio_url": string,
+      "stt_expected": string,
+      "stt_accepted_variants": [string],
+      "distractor_phonemes": [string],
+      "cvc_breakdown": object | null
+    }
+  ],
+  "trials_per_session": number,
+  "scoring": {
+    "receptive_correct": number,
+    "expressive_correct": number,
+    "expressive_close": number,
+    "perfect_bonus": number
+  }
+}
+
+---
+
+### PHONICS PHONETICS — Stage Rules
+
+**phonics_stage** — integer 1 through 5. Select the correct stage based on session history using the progression gates below. Never skip a stage. Never go backwards unless the last 3 sessions show consistent failure (< 20% correct_independent on the current stage).
+
+| phonics_stage | stage_label          | Content                                               |
+| ------------- | -------------------- | ----------------------------------------------------- |
+| 1             | vowel_sounds         | /a/ /e/ /i/ /o/ /u/ — short vowels only               |
+| 2             | consonant_sounds     | 21 consonants in 3 acquisition groups                 |
+| 3             | blends_and_digraphs  | SH CH TH WH PH CK BL BR CL CR DR FL FR GL GR PL PR ST TR |
+| 4             | cvc_words            | CVC word families: -at -ig -it -in -op -ot -og -un -ug |
+| 5             | sight_words          | Dolch Tier 1 sight words + 2-syllable regular words   |
+
+---
+
+### PHONICS PHONETICS — Progression Gate Rules
+
+Evaluate session history to determine which phonics_stage to assign. Apply gates in order:
+
+**Stage 1 → Stage 2 gate**
+Session history must show ≥ 80% correct_independent rate across at least 3 sessions each for ALL 5 vowels (/a/ /e/ /i/ /o/ /u/). If any vowel has < 3 sessions or < 80% accuracy, stay at Stage 1 and target the weakest vowel.
+Condition: vowel_mastery_count == 5
+
+**Stage 2 → Stage 3 gate**
+Session history must show consistent correct_independent performance on ALL 6 Group A consonants: b, m, p, t, d, n. Group B and C consonants do NOT need to be mastered before Stage 3 unlocks — they continue in parallel.
+Condition: consonant_group_a_all_mastered == true
+
+**Stage 3 → Stage 4 gate**
+Session history must show ≥ 80% correct_independent on the 3 core digraphs: SH, CH, TH. Blends (BL, CR etc.) do not need to be mastered before Stage 4.
+Condition: sh_mastered && ch_mastered && th_mastered
+
+**Stage 4 → Stage 5 gate**
+Session history must show ≥ 80% correct_independent accuracy across at least 5 different CVC word families. Words within a family count separately — the child must demonstrate transfer across families, not just mastery within one.
+Condition: cvc_families_mastered >= 5
+
+**If session_history is empty or absent**: always assign phonics_stage: 1, response_mode: "receptive", difficulty: "easy".
+
+---
+
+### PHONICS PHONETICS — Response Mode Rules
+
+**response_mode** — "receptive" or "expressive". Set per-phoneme based on session history. The mode applies to the entire session (do not mix modes within a single session).
+
+Set response_mode to "receptive" if:
+- This phoneme has fewer than 3 sessions in history
+- Last 3 sessions on this phoneme show correct_independent rate < 80%
+- Session history shows 2+ consecutive no_response outcomes on this phoneme
+- stt_available flag is false (mic permission denied — always fall back)
+
+Set response_mode to "expressive" if:
+- This phoneme shows 3 consecutive correct_independent outcomes in the most recent sessions
+- AND no_response rate is < 10% across those sessions
+
+**allow_skip**: always true when response_mode is "expressive". Never true when receptive. The skip option lets non-verbal children pass expressive trials without penalty.
+
+---
+
+### PHONICS PHONETICS — Trial Construction Rules
+
+**trials_per_session**: always 5. Never more, never fewer.
+
+**Trial selection — which phonemes to include in this session:**
+- All 5 trials should target phonemes within the current phonics_stage
+- At Stage 1: select from vowels the child has the weakest history on (fewest sessions or lowest accuracy first)
+- At Stage 2: select from the lowest-mastered consonants within the current active group (A, then B, then C)
+- At Stage 3: always start with SH, CH, TH if not yet mastered; then introduce blends
+- At Stage 4: select one word family per session (e.g. all 5 trials from the -at family). Rotate families across sessions.
+- At Stage 5: select 5 sight words from the current batch — words the child has the least history on
+
+**Never repeat the same phoneme in 2 consecutive trials within a session** unless phonics_stage is 1 and only 1–2 vowels are unlocked (in which case alternate them).
+
+---
+
+### PHONICS PHONETICS — Phoneme Reference Table
+
+Use ONLY these approved phonemes, display letters, anchor words, and audio URL paths. The phoneme_audio_url must always use the pre-generated manifest path format: `{asset_base_url}/audio/phonemes/{phoneme_id}_carrier.mp3`
+
+**Stage 1 — Vowels**
+| phoneme | display_letter | anchor_word | phoneme_id   | stt_expected | stt_accepted_variants         |
+| ------- | -------------- | ----------- | ------------ | ------------ | ----------------------------- |
+| /a/     | A              | apple       | a_vowel      | a            | ["ay", "ah", "apple"]         |
+| /e/     | E              | egg         | e_vowel      | e            | ["ee", "eh", "egg"]           |
+| /i/     | I              | igloo       | i_vowel      | i            | ["ih", "eye", "igloo"]        |
+| /o/     | O              | orange      | o_vowel      | o            | ["oh", "aw", "orange"]        |
+| /u/     | U              | umbrella    | u_vowel      | u            | ["uh", "yoo", "umbrella"]     |
+
+**Stage 2 — Consonants (Group A — introduce first)**
+| phoneme | display_letter | anchor_word | phoneme_id | stt_expected | stt_accepted_variants         |
+| ------- | -------------- | ----------- | ---------- | ------------ | ----------------------------- |
+| /b/     | B              | ball        | b_cons     | b            | ["bee", "buh", "be"]          |
+| /m/     | M              | moon        | m_cons     | m            | ["em", "mmm"]                 |
+| /p/     | P              | pen         | p_cons     | p            | ["pee", "puh"]                |
+| /t/     | T              | tree        | t_cons     | t            | ["tee", "tuh"]                |
+| /d/     | D              | dog         | d_cons     | d            | ["dee", "duh"]                |
+| /n/     | N              | nose        | n_cons     | n            | ["en", "nuh"]                 |
+
+**Stage 2 — Consonants (Group B — after Group A mastered)**
+| phoneme | display_letter | anchor_word | phoneme_id | stt_expected | stt_accepted_variants         |
+| ------- | -------------- | ----------- | ---------- | ------------ | ----------------------------- |
+| /f/     | F              | fish        | f_cons     | f            | ["ef", "fuh"]                 |
+| /g/     | G              | goat        | g_cons     | g            | ["gee", "guh"]                |
+| /h/     | H              | hat         | h_cons     | h            | ["aitch", "huh"]              |
+| /k/     | K              | kite        | k_cons     | k            | ["kay", "kuh"]                |
+| /l/     | L              | lion        | l_cons     | l            | ["el", "luh"]                 |
+| /r/     | R              | rabbit      | r_cons     | r            | ["ar", "ruh"]                 |
+| /s/     | S              | sun         | s_cons     | s            | ["es", "sss"]                 |
+| /w/     | W              | water       | w_cons     | w            | ["double-u", "wuh"]           |
+
+**Stage 2 — Consonants (Group C — after Group B mastered)**
+| phoneme | display_letter | anchor_word | phoneme_id | stt_expected | stt_accepted_variants         |
+| ------- | -------------- | ----------- | ---------- | ------------ | ----------------------------- |
+| /v/     | V              | van         | v_cons     | v            | ["vee", "vuh"]                |
+| /j/     | J              | jar         | j_cons     | j            | ["jay", "juh"]                |
+| /y/     | Y              | yarn        | y_cons     | y            | ["why", "yuh"]                |
+| /z/     | Z              | zebra       | z_cons     | z            | ["zee", "zzz"]                |
+| /qu/    | Q              | queen       | q_cons     | q            | ["cue", "kwuh"]               |
+| /x/     | X              | fox         | x_cons     | x            | ["ex", "ks"]                  |
+
+**Stage 3 — Digraphs (introduce before blends)**
+| phoneme | display_letter | anchor_word | phoneme_id  | stt_expected | stt_accepted_variants         |
+| ------- | -------------- | ----------- | ----------- | ------------ | ----------------------------- |
+| /sh/    | SH             | shell       | sh_digraph  | sh           | ["shh", "shhh", "shush"]      |
+| /ch/    | CH             | chair       | ch_digraph  | ch           | ["chuh", "church"]            |
+| /th/    | TH             | thumb       | th_digraph  | th           | ["the", "thee", "thuh"]       |
+| /wh/    | WH             | whale       | wh_digraph  | wh           | ["wuh", "what"]               |
+| /ph/    | PH             | phone       | ph_digraph  | ph           | ["fuh", "eff"]                |
+| /ck/    | CK             | duck        | ck_digraph  | ck           | ["kuh", "kay"]                |
+
+**Stage 3 — Blends (after digraphs)**
+| phoneme | display_letter | anchor_word | phoneme_id | stt_expected | stt_accepted_variants         |
+| ------- | -------------- | ----------- | ---------- | ------------ | ----------------------------- |
+| /bl/    | BL             | blue        | bl_blend   | bl           | ["bul", "blue"]               |
+| /br/    | BR             | bread       | br_blend   | br           | ["bruh", "bread"]             |
+| /cl/    | CL             | clap        | cl_blend   | cl           | ["kul", "clap"]               |
+| /cr/    | CR             | crab        | cr_blend   | cr           | ["kruh", "crab"]              |
+| /dr/    | DR             | drum        | dr_blend   | dr           | ["druh", "drum"]              |
+| /fl/    | FL             | flag        | fl_blend   | fl           | ["fuh-l", "flag"]             |
+| /fr/    | FR             | frog        | fr_blend   | fr           | ["fruh", "frog"]              |
+| /gl/    | GL             | glue        | gl_blend   | gl           | ["guh-l", "glue"]             |
+| /gr/    | GR             | grass       | gr_blend   | gr           | ["gruh", "grass"]             |
+| /pl/    | PL             | plane       | pl_blend   | pl           | ["puh-l", "plane"]            |
+| /pr/    | PR             | press       | pr_blend   | pr           | ["pruh", "press"]             |
+| /st/    | ST             | star        | st_blend   | st           | ["stuh", "star"]              |
+| /tr/    | TR             | tree        | tr_blend   | tr           | ["truh", "tree"]              |
+
+**Stage 4 — CVC Word Families** (select one family per session, rotate across sessions)
+| family | words                              | phoneme_id pattern      |
+| ------ | ---------------------------------- | ----------------------- |
+| -at    | cat, bat, hat, mat, rat, sat       | cvc_{word}              |
+| -ig    | big, pig, dig, wig, fig            | cvc_{word}              |
+| -it    | bit, sit, hit, fit, kit, pit       | cvc_{word}              |
+| -in    | bin, pin, win, tin, fin, sin       | cvc_{word}              |
+| -op    | hop, top, mop, pop, cop            | cvc_{word}              |
+| -ot    | dot, hot, pot, got, lot            | cvc_{word}              |
+| -og    | dog, log, hog, fog, bog            | cvc_{word}              |
+| -un    | run, fun, sun, bun, gun, nun       | cvc_{word}              |
+| -ug    | bug, hug, mug, rug, jug, tug      | cvc_{word}              |
+
+For each CVC trial, stt_expected is the full word (e.g. "cat"). stt_accepted_variants covers common child mispronunciations (e.g. ["kat", "kad", "tat"]).
+
+**Stage 5 — Sight Words (Dolch Tier 1)**
+the, and, a, to, said, in, he, I, of, it, was, you, they, on, she, is, for, at, his, but
+phoneme_id pattern: sight_{word} (e.g. sight_the, sight_said)
+stt_expected: the word itself. stt_accepted_variants: common phonetic attempts.
+
+---
+
+### PHONICS PHONETICS — Difficulty Rules
+
+**difficulty** maps directly to phonics_stage and session history. Do NOT use the standard difficulty calibration rules for this game type — use these instead:
+
+- difficulty "easy":   phonics_stage 1–2, OR any stage with < 3 sessions on target phonemes
+- difficulty "medium": phonics_stage 2–3, OR correct_independent rate 40–79%
+- difficulty "hard":   phonics_stage 4–5, OR correct_independent rate ≥ 80% across 3+ sessions
+
+**Distractor selection per difficulty (receptive mode only)**
+- easy:   2 options total — target + 1 phonemically distant distractor (e.g. /a/ vs /o/, never /a/ vs /e/)
+- medium: 3 options total — target + 2 distractors, at least 1 from same phoneme category
+- hard:   4 options total — target + 3 distractors including at least 1 perceptually similar pair (e.g. /b/ vs /d/, /p/ vs /b/, SH vs CH)
+
+**Approved distractor pairs (most confusable — use at hard difficulty)**
+b/d, p/b, m/n, f/v, s/z, sh/ch, th/sh, bl/br, cl/cr, fl/fr
+
+---
+
+### PHONICS PHONETICS — anchor_image_url Construction
+
+Build anchor image URLs using the asset_base_url exactly as defined for other game types:
+`{asset_base_url}/{asset_type}/{anchor_word}`
+
+Examples:
+- apple → `{asset_base_url}/fruit/apple`
+- ball  → `{asset_base_url}/objects/ball`
+- cat   → `{asset_base_url}/animals/cat`
+- shell → `{asset_base_url}/objects/shell`
+
+Select the asset_type that best matches the anchor word from: fruit, animals, objects, food, vehicles, nature, body_parts.
+
+---
+
+### PHONICS PHONETICS — phoneme_audio_url Construction
+
+Phoneme audio is PRE-GENERATED and stored in the audio manifest. Never generate a phoneme_audio_url by calling TTS at activity generation time. Always construct it as:
+
+`{asset_base_url}/audio/phonemes/{phoneme_id}_carrier.mp3`
+
+Where phoneme_id comes from the Phoneme Reference Table above.
+
+For Stage 4 CVC words — the whole-word audio URL is:
+`{asset_base_url}/audio/words/{anchor_word}.mp3`
+
+For Stage 5 sight words:
+`{asset_base_url}/audio/words/sight_{word}.mp3`
+
+---
+
+### PHONICS PHONETICS — cvc_breakdown Field
+
+Set cvc_breakdown to null for Stages 1, 2, 3, and 5.
+Set cvc_breakdown for every trial in Stage 4. Structure:
+
+"cvc_breakdown": {
+  "letters": [string, string, string],
+  "phoneme_audio_urls": [string, string, string],
+  "highlight_delay_ms": 400
+}
+
+- letters: the three individual letters of the CVC word in order (e.g. ["C", "A", "T"])
+- phoneme_audio_urls: the pre-generated audio URL for each letter's phoneme sound — use the same phoneme_id pattern from the Stage 1–2 reference table. The vowel in the middle always uses the vowel phoneme_id.
+  Example for "cat": [
+    "{asset_base_url}/audio/phonemes/k_cons_carrier.mp3",
+    "{asset_base_url}/audio/phonemes/a_vowel_carrier.mp3",
+    "{asset_base_url}/audio/phonemes/t_cons_carrier.mp3"
+  ]
+- highlight_delay_ms: always 400
+
+**Letter-to-phoneme_id mapping for CVC words:**
+C in CVC position → k_cons (C makes /k/ sound in CVC words)
+G in CVC position → g_cons
+All other consonants → their standard phoneme_id from the reference table
+All vowels → their vowel phoneme_id (a_vowel, e_vowel, i_vowel, o_vowel, u_vowel)
+
+---
+
+### PHONICS PHONETICS — EBP Rules
+
+Always include at minimum these EBPs in ebp_applied:
+
+Stage 1 (vowels):
+["DTT", "Errorless Learning", "Prompt Hierarchy", "Multiple Exemplar Training"]
+
+Stage 2 (consonants):
+["DTT", "Shaping", "Prompt Hierarchy", "Multiple Exemplar Training"]
+
+Stage 3 (blends/digraphs):
+["DTT", "Shaping", "Multiple Exemplar Training", "Naturalistic Teaching"]
+
+Stage 4 (CVC words):
+["DTT", "Shaping", "Chaining", "Multiple Exemplar Training"]
+
+Stage 5 (sight words):
+["DTT", "Interspersal Teaching", "Multiple Exemplar Training", "Naturalistic Teaching"]
+
+For all expressive mode sessions, additionally include: "Differential Reinforcement"
+
+---
+
+### PHONICS PHONETICS — therapist_flag Rules
+
+Set therapist_flag to true if ANY of these conditions are met:
+
+- Child has ≥ 3 consecutive sessions with skip_count > 3 on the same phoneme (may be non-verbal, expressive mode inappropriate)
+- Child has ≥ 5 sessions on the same phoneme with correct_independent rate < 20% (possible phonological difficulty requiring specialist assessment)
+- Child's session history shows consistent no_response rate > 50% on expressive trials across 2+ consecutive sessions on any phoneme
+- Child is at Stage 2 Group A but has not improved on /b/ or /m/ after 5+ sessions (earliest-acquired sounds — persistent difficulty is clinically significant)
+
+therapist_flag_reason: always a plain-English 1-sentence description of which condition was triggered.
+
+---
+
+### PHONICS PHONETICS — parent_instruction Rules
+
+The parent_instruction for this game type must:
+1. Reference the specific stage and phoneme(s) being practiced
+2. Give a real-world activity parent can do at home to reinforce the sound
+3. Never use clinical terms like "phoneme", "digraph", "receptive", "expressive"
+4. Be warm, practical, and under 3 sentences
+
+Stage 1 example: "When you see the letter A today, say 'A is for apple — aaah!' with your child. Point out A sounds in everyday words: 'Listen — apple starts with aaah!' Keep it playful and low pressure."
+
+Stage 2 example: "When your child hears the B sound today, repeat it back with excitement — 'Yes! Buh! That's the B sound!' Look for B sounds together throughout the day: 'Ball starts with B — buh, buh, ball!'"
+
+Stage 3 example: "The SH sound is one your child is working on — practice it in fun moments: 'Shhh, the baby is sleeping!' or 'Can you say shell? Shhhh-ell.' The funnier and more dramatic, the better it sticks."
+
+Stage 4 example: "Your child is learning the -at word family today. After the game, play a rhyming game: 'Cat rhymes with... hat! Hat rhymes with... bat!' Silly rhyme chains are one of the best ways to build reading foundations."
+
+Stage 5 example: "Your child is learning sight words — words we read by recognising them, not sounding them out. Point to 'the' and 'a' when you read together tonight: 'See this word? That says THE. Can you find another one?'"
+
+---
+
+### PHONICS PHONETICS — Scoring Constants (never change these)
+
+"scoring": {
+  "receptive_correct":  10,
+  "expressive_correct": 20,
+  "expressive_close":   10,
+  "perfect_bonus":      30
+}
+
+---
+
+### PHONICS PHONETICS — Complete Easy Example (Stage 1, receptive)
+
+"game_config": {
+  "game_type": "phonics_phonetics",
+  "difficulty": "easy",
+  "time_limit_seconds": null,
+  "prompt_level": 5,
+  "skill_id": "vowel_sounds",
+  "module_id": "M02",
+  "reinforcement_schedule": "continuous",
+  "ebp_applied": ["DTT", "Errorless Learning", "Prompt Hierarchy", "Multiple Exemplar Training"],
+  "therapist_flag": false,
+  "therapist_flag_reason": null,
+  "parent_instruction": "When you see the letter A today, say 'A is for apple — aaah!' with your child. Point out A sounds in everyday words: 'Listen — apple starts with aaah!' Keep it playful and low pressure.",
+  "data": {
+    "phonics_stage": 1,
+    "stage_label": "vowel_sounds",
+    "response_mode": "receptive",
+    "allow_skip": false,
+    "trials": [
+      {
+        "id": "trial_001",
+        "phoneme": "a",
+        "display_letter": "A",
+        "anchor_word": "apple",
+        "anchor_image_url": "{asset_base_url}/fruit/apple",
+        "phoneme_audio_url": "{asset_base_url}/audio/phonemes/a_vowel_carrier.mp3",
+        "stt_expected": "a",
+        "stt_accepted_variants": ["ay", "ah", "apple"],
+        "distractor_phonemes": ["o"],
+        "cvc_breakdown": null
+      },
+      {
+        "id": "trial_002",
+        "phoneme": "e",
+        "display_letter": "E",
+        "anchor_word": "egg",
+        "anchor_image_url": "{asset_base_url}/food/egg",
+        "phoneme_audio_url": "{asset_base_url}/audio/phonemes/e_vowel_carrier.mp3",
+        "stt_expected": "e",
+        "stt_accepted_variants": ["ee", "eh", "egg"],
+        "distractor_phonemes": ["i"],
+        "cvc_breakdown": null
+      },
+      {
+        "id": "trial_003",
+        "phoneme": "a",
+        "display_letter": "A",
+        "anchor_word": "apple",
+        "anchor_image_url": "{asset_base_url}/fruit/apple",
+        "phoneme_audio_url": "{asset_base_url}/audio/phonemes/a_vowel_carrier.mp3",
+        "stt_expected": "a",
+        "stt_accepted_variants": ["ay", "ah", "apple"],
+        "distractor_phonemes": ["u"],
+        "cvc_breakdown": null
+      },
+      {
+        "id": "trial_004",
+        "phoneme": "e",
+        "display_letter": "E",
+        "anchor_word": "egg",
+        "anchor_image_url": "{asset_base_url}/food/egg",
+        "phoneme_audio_url": "{asset_base_url}/audio/phonemes/e_vowel_carrier.mp3",
+        "stt_expected": "e",
+        "stt_accepted_variants": ["ee", "eh", "egg"],
+        "distractor_phonemes": ["a"],
+        "cvc_breakdown": null
+      },
+      {
+        "id": "trial_005",
+        "phoneme": "a",
+        "display_letter": "A",
+        "anchor_word": "apple",
+        "anchor_image_url": "{asset_base_url}/fruit/apple",
+        "phoneme_audio_url": "{asset_base_url}/audio/phonemes/a_vowel_carrier.mp3",
+        "stt_expected": "a",
+        "stt_accepted_variants": ["ay", "ah", "apple"],
+        "distractor_phonemes": ["e"],
+        "cvc_breakdown": null
+      }
+    ],
+    "trials_per_session": 5,
+    "scoring": {
+      "receptive_correct": 10,
+      "expressive_correct": 20,
+      "expressive_close": 10,
+      "perfect_bonus": 30
     }
   }
 }
