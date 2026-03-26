@@ -83,4 +83,3 @@ webencodings
 wheel
 wxPython
 xdg
-xkit
