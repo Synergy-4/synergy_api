@@ -76,7 +76,6 @@ systemd-python
 tables
 typing_extensions
 ufoLib2
-ufw
 unattended-upgrades
 unicodedata2
 urllib3
