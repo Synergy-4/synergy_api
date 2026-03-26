@@ -56,7 +56,6 @@ py-cpuinfo
 pycairo
 pycups
 Pygments
-PyGObject
 PyJWT
 pyparsing
 pyrsistent
