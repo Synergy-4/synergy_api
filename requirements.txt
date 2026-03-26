@@ -6,7 +6,6 @@ blinker
 Bottleneck
 Brotli
 certifi
-chardet
 command-not-found
 configobj
 contourpy
