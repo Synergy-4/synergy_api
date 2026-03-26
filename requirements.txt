@@ -7,7 +7,6 @@ Bottleneck
 Brotli
 certifi
 chardet
-click
 command-not-found
 configobj
 contourpy
