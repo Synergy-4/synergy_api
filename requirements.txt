@@ -27,7 +27,6 @@ jsonpatch
 jsonpointer
 jsonschema
 kiwisolver
-language-selector
 launchpadlib
 lazr.restfulclient
 lazr.uri
