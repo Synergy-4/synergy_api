@@ -6,7 +6,6 @@ blinker
 Bottleneck
 Brotli
 certifi
-command-not-found
 configobj
 contourpy
 cryptography
