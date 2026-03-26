@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     
     # Local backend
     AUDIO_LOCAL_DIR: str = "./audio_files"
-    AUDIO_LOCAL_BASE_URL: str = "https://5304-154-160-19-166.ngrok-free.app"
+    AUDIO_LOCAL_BASE_URL: str = "http://localhost:8000"
     
     # R2 Storage
     R2_ENDPOINT_URL: str = ""
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     R2_BUCKET_NAME: str = "synergy-audio"
     R2_PUBLIC_URL: str = ""
 
-    ASSET_URL: str = ""
+    ASSET_URL: str = "ASSET_URL"
     
     model_config = SettingsConfigDict(
         env_file=".env", 

@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 # ── Synergy's two voices ───────────────────────────────────────────────
 # Child voice: warm, friendly, conversational female
 # Parent voice: calm, slightly slower, encouraging
-CHILD_VOICE  = "hf://kyutai/tts-voices/alba-mackenna/casual.wav"
-PARENT_VOICE = "hf://kyutai/tts-voices/expresso/ex01-ex02_default_001_channel2_198s.wav"
+CHILD_VOICE  = "kid.WAV"
+PARENT_VOICE = "kid.WAV"
 
 class TTSService:
     """Singleton. Loaded once at app startup, held in memory."""
