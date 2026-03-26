@@ -9,8 +9,6 @@ certifi
 configobj
 contourpy
 cryptography
-
-cupshelpers
 cycler
 dbus-python
 decorator
