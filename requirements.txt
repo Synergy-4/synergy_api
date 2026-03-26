@@ -9,7 +9,7 @@ certifi
 configobj
 contourpy
 cryptography
-cssselect
+
 cupshelpers
 cycler
 dbus-python
