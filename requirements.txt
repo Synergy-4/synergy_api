@@ -75,7 +75,6 @@ sympy
 systemd-python
 tables
 typing_extensions
-ubuntu-drivers-common
 ubuntu-pro-client
 ufoLib2
 ufw
